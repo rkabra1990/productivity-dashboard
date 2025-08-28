@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #161625;
+            color: #ddd;
+            font-family: Arial, sans-serif;
+        }
+        h2, h3 {
+            color: #9cdcfe;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem;
+        }
+        .card {
+            background-color: #1e1e2f;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .chart-container {
+            max-width: 100%;
+            padding: 1rem;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 1rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+     .card-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        padding: 0 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .card {
+        background-color: #1e1e2f;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .card h4 {
+        color: #fff;
+        margin-bottom: 1rem;
+    }
+
+    canvas {
+        width: 100% !important;
+        height: 300px !important;
+    }
+
+    @media (max-width: 768px) {
+        .card-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    </style>
+</head>
+<body>
+<!-- ✅ Header Fragment -->
+<div th:replace="fragments/header :: header"></div>
+
+<div class="container">
+    <h2>📊 Dashboard Overview</h2>
+
+    <div class="dashboard-grid">
+
+        <!-- Left Column: Lists -->
+        <div class="card">
+            <h3>✅ Completed Tasks (Today)</h3>
+            <ul>
+                <li th:each="t : ${completedTasks}" th:text="${t.title}">Sample Completed</li>
+            </ul>
+
+            <h3>🕗 Pending Tasks (Today)</h3>
+            <ul>
+                <li th:each="t : ${pendingTasks}" th:text="${t.title}">Sample Pending</li>
+            </ul>
+
+            <h3>🧘 Today's Habits</h3>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item bg-dark text-white"
+                        th:each="habit : ${todayHabits}">
+                        <span th:text="${habit.name}"></span>
+                        <span th:if="${habitStatus != null and habitStatus[habit.id]}" class="badge bg-success ms-2">Done</span>
+                        <span th:unless="${habitStatus != null and habitStatus[habit.id]}" class="badge bg-warning text-dark ms-2">Pending</span>
+                    </li>
+                </ul>
+
+            <h3>🍅 Pomodoro</h3>
+            <p th:text="${todayPomodoro} + ' minutes focused today'">0 minutes focused</p>
+        </div>
+
+        <!-- Right Column: Chart -->
+        <div class="card chart-container">
+            <h3>📈 Task Completion Chart</h3>
+            <canvas id="taskPieChart"></canvas>
+        </div>
+    </div>
+    <h3>📅 Weekly Productivity Overview</h3>
+
+    <div class="card-container">
+        <!-- ✅ Task Chart Card -->
+        <div class="card">
+            <h4>✅ Tasks Completed</h4>
+            <canvas id="weeklyTaskChart"></canvas>
+        </div>
+
+        <!-- ✅ Pomodoro Chart Card -->
+        <div class="card">
+            <h4>⏱️ Pomodoro Minutes</h4>
+            <canvas id="weeklyPomodoroChart"></canvas>
+        </div>
+    </div>
+    <!-- ✅ Footer Fragment -->
+    <div class="footer" th:replace="fragments/footer :: footer"></div>
+
+</div>
+
+<!-- Chart Script -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var completedCount = [[${completedCount} ?: 0]];
+    var pendingCount = [[${pendingCount} ?: 0]];
+
+    var ctx = document.getElementById('taskPieChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Completed', 'Pending'],
+            datasets: [{
+                data: [completedCount, pendingCount],
+                backgroundColor: ['#4CAF50', '#f44336']
+            }]
+        },
+        options: {
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#ccc'
+                    }
+                }
+            }
+        }
+    });
+    /*]]>*/
+</script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyTasks = [[${weeklyTasks}]];
+    const weeklyPomodoro = [[${weeklyPomodoro}]];
+
+    // Task Chart
+    new Chart(document.getElementById('weeklyTaskChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: weekdays,
+            datasets: [{
+                label: 'Tasks Completed',
+                data: weeklyTasks,
+                backgroundColor: '#4CAF50'
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ccc' }
+                },
+                x: {
+                    ticks: { color: '#ccc' }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#ccc' } }
+            }
+        }
+    });
+
+    // Pomodoro Chart
+    new Chart(document.getElementById('weeklyPomodoroChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: weekdays,
+            datasets: [{
+                label: 'Pomodoro Minutes',
+                data: weeklyPomodoro,
+                borderColor: '#f44336',
+                backgroundColor: '#f44336',
+                fill: false,
+                tension: 0.4
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ccc' }
+                },
+                x: {
+                    ticks: { color: '#ccc' }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#ccc' } }
+            }
+        }
+    });
+    /*]]>*/
+</script>
+</body>
+</html>

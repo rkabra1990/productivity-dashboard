@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Welcome | ProdDash</title>
+</head>
+<body>
+    <div id="content">
+        <div class="container">
+            <h1>Welcome to Productivity Dashboard</h1>
+            <div class="dashboard-grid">
+                <a href="/tasks" class="dashboard-card">
+                    <span class="emoji">📋</span>
+                    <h3>Task Manager</h3>
+                    <p>Organize and track your daily tasks</p>
+                </a>
+                <a href="/pomodoro" class="dashboard-card">
+                    <span class="emoji">🍅</span>
+                    <h3>Pomodoro Timer</h3>
+                    <p>Boost your productivity with focused work sessions</p>
+                </a>
+                <a href="/reminders" class="dashboard-card">
+                    <span class="emoji">⏰</span>
+                    <h3>Reminders</h3>
+                    <p>Never miss important events</p>
+                </a>
+                <a href="/habits" class="dashboard-card">
+                    <span class="emoji">📅</span>
+                    <h3>Habit Tracker</h3>
+                    <p>Build and track your habits</p>
+                </a>
+                <a href="/matrix" class="dashboard-card">
+                    <span class="emoji">📊</span>
+                    <h3>Priority Matrix</h3>
+                    <p>Organize tasks by priority</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

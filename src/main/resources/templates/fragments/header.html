@@ -1,0 +1,187 @@
+<!-- fragments/header.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Dashboard</title>
+</head>
+<body>
+<div th:fragment="header">
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo">📊 Productivity</div>
+            <button class="hamburger" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+        <nav class="nav-links" id="navLinks">
+            <a th:href="@{/dashboard}">🏠 Dashboard</a>
+            <a th:href="@{/tasks}">📝 Tasks</a>
+            <a th:href="@{/pomodoro}">🍅 Pomodoro</a>
+            <a th:href="@{/habits}">📅 Habits</a>
+            <a th:href="@{/matrix}">📊 Matrix</a>
+        </nav>
+    </header>
+
+    <style>
+        /* Base styles */
+        .app-header {
+            background: linear-gradient(to right, #1e1e2f, #2a2a40);
+            padding: 0.5rem 1rem;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid #333;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .app-header .logo {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 0.5rem 0;
+        }
+
+        /* Navigation links */
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 0.5rem 0;
+            transition: max-height 0.3s ease-in-out;
+            overflow: hidden;
+        }
+
+        .nav-links a {
+            color: #88c6ff;
+            text-decoration: none;
+            padding: 0.5rem 0.75rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .nav-links a:hover {
+            color: #ffffff;
+            background-color: rgba(136, 198, 255, 0.1);
+            text-shadow: 0 0 5px #88c6ff;
+        }
+
+        /* Hamburger menu */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 30px;
+            height: 21px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            z-index: 10;
+        }
+
+        .hamburger span {
+            display: block;
+            height: 3px;
+            width: 100%;
+            background-color: #88c6ff;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .nav-links {
+                gap: 0.5rem;
+            }
+            .nav-links a {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            .nav-links {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #2a2a40;
+                flex-direction: column;
+                max-height: 0;
+                padding: 0;
+                margin: 0;
+                opacity: 0;
+                visibility: hidden;
+                z-index: 5;
+            }
+
+            .nav-links.active {
+                max-height: 500px;
+                padding: 1rem;
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .nav-links a {
+                margin: 0.25rem 0;
+                padding: 0.75rem 1rem;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 4px;
+            }
+
+            .nav-links.active {
+                max-height: 500px;
+                padding: 1rem;
+                opacity: 1;
+                visibility: visible;
+            }
+
+            /* Menu toggle animation */
+            .hamburger.active span:nth-child(1) {
+                transform: translateY(9px) rotate(45deg);
+            }
+
+            .hamburger.active span:nth-child(2) {
+                opacity: 0;
+            }
+
+            .hamburger.active span:nth-child(3) {
+                transform: translateY(-9px) rotate(-45deg);
+            }
+        }
+    </style>
+    
+    <script th:inline="javascript">
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            const hamburger = document.querySelector('.hamburger');
+            navLinks.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const navLinks = document.getElementById('navLinks');
+            const hamburger = document.querySelector('.hamburger');
+            if (!event.target.closest('.app-header')) {
+                navLinks.classList.remove('active');
+                hamburger.classList.remove('active');
+            }
+        });
+    </script>
+</div>

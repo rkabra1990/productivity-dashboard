@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Habit Tracker | ProdDash</title>
+    <th:block th:replace="fragments/header :: header"></th:block>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a6baf;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            max-width: 1200px;
+            padding: 2rem 1rem;
+        }
+    </style>
+    <th:block layout:fragment="head">
+    <style>
+        /* Stats Section */
+        .habit-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 1.5rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0.5rem 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        .stat-box div:last-child {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .quick-action {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        
+        .quick-action:hover {
+            background: #3a5a9f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .quick-action.secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+        
+        .quick-action.secondary:hover {
+            background: #e9ecef;
+        }
+        
+        /* Habit Cards */
+        .habit-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .habit-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+        
+        .habit-card {
+            transition: all 0.3s ease-in-out;
+            transform-origin: center;
+        }
+        
+        .habit-card.completing {
+            transform: scale(0.98);
+            background-color: rgba(25, 135, 84, 0.05);
+            box-shadow: 0 2px 10px rgba(25, 135, 84, 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .habit-card.completed {
+            opacity: 0.6;
+            border-left: 4px solid #198754;
+            background-color: rgba(25, 135, 84, 0.05);
+            transform: translateX(10px);
+            transition: all 0.4s ease-in-out;
+        }
+        
+        .completed .habit-title {
+            text-decoration: line-through;
+            color: #6c757d;
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .streak {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #fff3cd;
+            color: #856404;
+            border-radius: 12px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Progress Bar */
+        .progress {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #e9ecef;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background-color: var(--primary-color);
+            transition: width 0.6s ease;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        /* Form Elements */
+        .form-control, .form-select {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(74, 107, 175, 0.25);
+        }
+    </style>
+</head>
+    </th:block>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1100"></div>
+    
+    <div layout:fragment="content">
+        <div class="container">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="mb-1">Habit Tracker</h1>
+                    <p class="text-muted mb-0">Build better habits, one day at a time</p>
+                </div>
+                <div>
+                    <a href="/habits/archived" class="btn btn-outline-secondary">
+                        <i class="bi bi-archive"></i> View Archived
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Stats Overview -->
+            <div class="habit-stats">
+                <div class="stat-box">
+                    <div class="stat-value" th:text="${stats?.currentStreak ?: '0'}">0</div>
+                    <div>Day Streak</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" th:with="rate=${stats?.completionRate != null ? stats.completionRate : 0}" 
+                         th:text="${#numbers.formatDecimal(rate, 0, 0)} + '%'">0%</div>
+                    <div>Completion Rate</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" th:text="${stats?.totalHabits ?: '0'}">0</div>
+                    <div>Active Habits</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" th:text="${stats?.totalCompletedToday ?: '0'}">0</div>
+                    <div>Completed Today</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Today's Habits</h2>
+                <button class="btn btn-primary" onclick="document.getElementById('habitForm').scrollIntoView({behavior: 'smooth'})">
+                    <i class="bi bi-plus-lg"></i> Add New Habit
+                </button>
+            </div>
+
+            <!-- Form to Add Habit -->
+            <form id="habitForm" th:action="@{/habits}" method="post" class="habit-form" th:object="${habit}">
+                <h3>Add New Habit</h3>
+                <div class="form-group">
+                    <input type="text" th:field="*{name}" placeholder="Habit name (e.g., Morning Run)" required 
+                           class="form-control" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Time</label>
+                        <input type="time" th:field="*{scheduledTime}" required class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select th:field="*{priority}" class="form-control">
+                            <option th:each="p : ${T(com.yourapp.dashboard.productivity_dashboard.service.Priority).values()}"
+                                    th:value="${p}" th:text="${p}">
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <select th:field="*{recurrence}" id="recurrenceSelect" onchange="toggleExtraFields()" class="form-control">
+                        <option th:each="r : ${recurrences}" 
+                                th:value="${r}" 
+                                th:text="${r}">
+                        </option>
+                    </select>
+                </div>
+
+                <div id="weeklyField" style="display:none;" class="form-group">
+                    <label>Day of Week:</label>
+                    <select th:field="*{weeklyDay}" class="form-control">
+                        <option th:each="day : ${daysOfWeek}" 
+                                th:value="${day}" 
+                                th:text="${day}">
+                        </option>
+                    </select>
+                </div>
+
+                <div id="monthlyField" style="display:none;" class="form-group">
+                    <label>Day of Month (1-31):</label>
+                    <input type="number" th:field="*{monthlyDay}" min="1" max="31" class="form-control" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">➕ Add Habit</button>
+            </form>
+
+            <!-- Today's Habits -->
+            <div th:if="${todaysHabits.empty}" class="empty-state">
+                <i class="bi bi-emoji-smile" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h4>No habits scheduled for today</h4>
+                <p class="mb-0">Add some habits to get started on your journey!</p>
+            </div>
+            
+            <div class="row g-4">
+                <div th:each="entry : ${todaysHabits}" class="col-12 col-md-6 col-lg-4">
+                    <div class="habit-card" th:classappend="${entry.completed == true} ? 'completed' : ''">
+                        <div th:if="${entry.habit != null and entry.habit.currentStreak > 0}" class="streak">
+                            <i class="bi bi-fire"></i>
+                            <span th:text="${entry.habit.currentStreak} + ' day' + (${entry.habit.currentStreak} != 1 ? 's' : '')"></span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h3 class="habit-title mb-0" th:class="${entry.completed == true} ? 'text-muted text-decoration-line-through' : ''" 
+                                th:text="${entry.habit != null ? entry.habit.name : 'Habit'}"></h3>
+                            <span class="badge" 
+                                  th:if="${entry.habit != null and entry.habit.priority != null}"
+                                  th:class="${entry.habit.priority.name() == 'HIGH' ? 'bg-danger' : 
+                                          (entry.habit.priority.name() == 'MEDIUM' ? 'bg-warning' : 'bg-secondary')}"
+                                  th:text="${entry.habit.priority}">
+                            </span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
+                            <span class="scheduled-time d-flex align-items-center" 
+                                  th:if="${entry.scheduledDateTime != null}">
+                                <i class="bi bi-clock me-1"></i>
+                                <span th:if="${entry.habit?.nextOccurrence != null}" 
+                                      th:data-next-occurence="${#temporals.format(entry.habit.nextOccurrence, 'MMM d, yyyy h:mm a')}"
+                                      th:text="${#temporals.format(entry.habit.nextOccurrence, 'MMM d, h:mm a')}">
+                                </span>
+                                <span th:unless="${entry.habit?.nextOccurrence != null}" 
+                                      th:text="${#temporals.format(entry.scheduledDateTime, 'h:mm a')}">
+                                </span>
+                            </span>
+                            <span th:if="${entry.habit != null and entry.habit.recurrence != null}" class="text-uppercase" th:text="${entry.habit.recurrence}"></span>
+                        </div>
+                        
+                        <!-- Temporarily removed completion rate progress bar -->
+                        <div class="mb-3">
+                            <small class="text-muted">Completion rate: Coming soon</small>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted small me-2">Completion:</span>
+                                <span class="fw-medium" th:if="${entry.habit != null}" th:text="${#numbers.formatDecimal(entry.habit.completionRate, 1, 1)} + '%'"></span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" 
+                                        th:unless="${entry.completed == true}"
+                                        class="btn btn-sm btn-success complete-btn"
+                                        th:data-habit-id="${entry.id}"
+                                        onclick="completeHabit(this.getAttribute('data-habit-id'), this)">
+                                    <i class="bi bi-check-lg"></i> Done
+                                </button>
+                                <form th:action="@{/habits/skip/{id}(id=${entry.id})}" 
+                                      method="post" 
+                                      onsubmit="return confirm('Skip this habit for today?');"
+                                      class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-skip-forward"></i> Skip
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">All Habits</h2>
+                <button class="btn btn-outline-primary" onclick="document.getElementById('habitForm').scrollIntoView({behavior: 'smooth'})">
+                    <i class="bi bi-plus-lg"></i> Add New Habit
+                </button>
+            </div>
+            
+            <div th:if="${habits.empty}" class="empty-state">
+                <i class="bi bi-plus-circle" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h4>No habits yet</h4>
+                <p class="mb-0">Get started by adding your first habit!</p>
+            </div>
+
+            <div class="row g-4">
+                <div th:each="habit : ${habits}" class="col-12 col-md-6 col-lg-4">
+                    <div class="habit-card">
+                        <!-- Streak Badge -->
+                        <div th:if="${habit.currentStreak > 0}" class="streak">
+                            <i class="bi bi-fire"></i>
+                            <span th:text="${habit.currentStreak} + ' day' + (${habit.currentStreak} != 1 ? 's' : '')"></span>
+                        </div>
+                        
+                        <!-- Habit Name and Priority -->
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h3 class="habit-title mb-0" th:text="${habit.name}"></h3>
+                            <span class="badge" 
+                                  th:class="${habit.priority.name() == 'HIGH' ? 'bg-danger' : 
+                                          (habit.priority.name() == 'MEDIUM' ? 'bg-warning' : 'bg-secondary')}"
+                                  th:text="${habit.priority}">
+                            </span>
+                        </div>
+                        
+                        <!-- Next Occurrence and Recurrence -->
+                        <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
+                            <span class="scheduled-time d-flex align-items-center">
+                                <i class="bi bi-clock me-1"></i>
+                                <span th:if="${habit.nextOccurrence != null}" 
+                                      th:data-next-occurence="${#temporals.format(habit.nextOccurrence, 'MMM d, yyyy h:mm a')}"
+                                      th:text="${#temporals.format(habit.nextOccurrence, 'MMM d, h:mm a')}">
+                                </span>
+                                <span th:unless="${habit.nextOccurrence != null}" 
+                                      th:text="${#temporals.format(habit.scheduledTime, 'MMM d, h:mm a')}">
+                                </span>
+                            </span>
+                            <span class="badge bg-light text-dark text-uppercase" 
+                                  th:if="${habit.recurrence != null}" 
+                                  th:text="${habit.recurrence}">
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="text-muted">Progress</span>
+                                <span class="fw-medium" th:if="${habit.completionRate != null}" th:text="${#numbers.formatDecimal(habit.completionRate, 1, 1)} + '%'"></span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     th:style="'width: ' + ${habit.completionRate} + '%'"
+                                     th:class="${habit.completionRate > 70 ? 'bg-success' : (habit.completionRate > 30 ? 'bg-warning' : 'bg-danger')}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center">
+                                <th:block th:if="${habit.currentStreak != null and habit.currentStreak > 0}">
+                                    <span class="badge bg-light text-dark me-2">
+                                        <i class="bi bi-fire text-warning"></i>
+                                        <span th:text="${habit.currentStreak} + (habit.currentStreak == 1 ? ' day' : ' days')"></span>
+                                        <th:block th:if="${habit.bestStreak != null and habit.bestStreak > 0}">
+                                            <span class="ms-1">
+                                                (Best: <span th:text="${habit.bestStreak}"></span>)
+                                            </span>
+                                        </th:block>
+                                    </span>
+                                </th:block>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" 
+                                        class="btn btn-sm btn-success complete-btn"
+                                        th:data-habit-id="${habit.id}"
+                                        onclick="completeHabit(this.getAttribute('data-habit-id'), this)">
+                                    <i class="bi bi-check-lg"></i> Complete
+                                </button>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+                                    <li>
+                                        <a class="dropdown-item" href="#" th:href="@{/habits/archive/{id}(id=${habit.id})}" 
+                                           onclick="return confirm('Archive this habit? You can find it in the archived section later.');">
+                                            <i class="bi bi-archive me-2"></i> Archive
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" th:href="@{/habits/delete/{id}(id=${habit.id})}"
+                                           onclick="return confirm('Are you sure you want to delete this habit? This cannot be undone.');">
+                                            <i class="bi bi-trash me-2"></i> Delete
+                                        </a>
+                                    </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <th:block th:replace="fragments/footer :: footer"></th:block>
+
+    <script th:inline="javascript" layout:fragment="scripts">
+        /*<![CDATA[*/
+        // Function to show toast notifications
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            
+            toast.id = toastId;
+            toast.className = `toast show align-items-center text-white bg-${type} border-0`;
+            toast.role = 'alert';
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                            data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>`;
+            
+            if (toastContainer) {
+                toastContainer.appendChild(toast);
+                
+                // Auto-remove toast after 5 seconds
+                setTimeout(() => {
+                    const toastElement = document.getElementById(toastId);
+                    if (toastElement) {
+                        toastElement.remove();
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Function to handle habit completion
+        async function completeHabit(habitId, buttonElement) {
+            // Get card and update UI immediately for better responsiveness
+            const card = buttonElement.closest('.habit-card');
+            const timeElement = card.querySelector('.scheduled-time span[data-next-occurence]');
+            
+            // Show loading state immediately
+            const originalButtonHtml = buttonElement.innerHTML;
+            buttonElement.disabled = true;
+            buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            
+            // Add temporary 'completing' class for visual feedback
+            card.classList.add('completing');
+            
+            try {
+                const response = await fetch(`/habits/${habitId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update UI to show completion with animation
+                    card.classList.remove('completing');
+                    
+                    // Add a small delay for the completion animation
+                    setTimeout(() => {
+                        card.classList.add('completed');
+                        
+                        // Animate the card out of view after a delay
+                        setTimeout(() => {
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(100%)';
+                            
+                            // Remove the card from DOM after animation completes
+                            setTimeout(() => {
+                                card.remove();
+                                
+                                // Show success message
+                                showToast('Habit completed successfully!', 'success');
+                            }, 300);
+                        }, 500);
+                    }, 100);
+                    
+                    // Update button state
+                    buttonElement.disabled = true;
+                    buttonElement.innerHTML = '<i class="bi bi-check-lg"></i> Completed';
+                    
+                    // Update streak display
+                    const streakBadge = card.querySelector('.streak');
+                    if (streakBadge) {
+                        const streakCount = streakBadge.querySelector('span:first-child');
+                        if (streakCount) {
+                            streakCount.textContent = result.currentStreak + ' day' + (result.currentStreak !== 1 ? 's' : '');
+                        }
+                    }
+                    
+                    // Update the scheduled time with the next occurrence (include date)
+                    if (timeElement && result.nextOccurrenceFormatted) {
+                        timeElement.setAttribute('data-next-occurence', result.nextOccurrenceFormatted);
+                        // Format the date to show abbreviated month, day, and time (e.g., "Aug 20, 9:00 AM")
+                        const date = new Date(result.nextOccurrenceFormatted);
+                        const formattedDate = date.toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                        timeElement.textContent = formattedDate;
+                    }
+                    
+                    // Show success message with next occurrence
+                    showToast(`Habit completed! Next: ${result.nextOccurrenceFormatted}`, 'success');
+                } else {
+                    throw new Error(result.error || 'Failed to complete habit');
+                }
+            } catch (error) {
+                console.error('Error completing habit:', error);
+                showToast(error.message || 'Failed to complete habit', 'danger');
+                
+                // Reset button state on error
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = '<i class="bi bi-check-lg"></i> Complete';
+            }
+            
+            return false; // Prevent default form submission
+        }
+        function toggleExtraFields() {
+            const recurrence = document.getElementById('recurrenceSelect').value;
+            document.getElementById('weeklyField').style.display = 
+                (recurrence === 'WEEKLY') ? 'block' : 'none';
+            document.getElementById('monthlyField').style.display = 
+                (recurrence === 'MONTHLY') ? 'block' : 'none';
+        }
+
+        function showCommonHabits() {
+            const commonHabits = [
+                {name: 'Morning Exercise', time: '07:00', priority: 'HIGH'},
+                {name: 'Read 10 pages', time: '21:00', priority: 'MEDIUM'},
+                {name: 'Meditate', time: '08:00', priority: 'HIGH'},
+                {name: 'Drink Water', time: '10:00', priority: 'MEDIUM', recurrence: 'HOURLY'}
+            ];
+            
+            // Show common habits in a modal or dropdown
+            alert('Common habits loaded. Select one to add it quickly!');
+        }
+
+        function showArchived() {
+            // This would typically be an AJAX call or a new page
+            window.location.href = '/habits/archived';
+        }
+        /*]]>*/
+    </script>
+<script th:inline="javascript">
+/*<![CDATA[*/
+    function toggleExtraFields(){
+        var val = document.getElementById('recurrenceSelect').value;
+        document.getElementById('weeklyField').style.display = val==='WEEKLY' ? 'inline-block' : 'none';
+        document.getElementById('monthlyField').style.display = val==='MONTHLY' ? 'inline-block' : 'none';
+        document.getElementById('yearlyField').style.display = val==='YEARLY' ? 'inline-block' : 'none';
+    }
+    document.addEventListener('DOMContentLoaded', toggleExtraFields);
+
+    // popup modal
+    const modal = document.createElement('div');
+    modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;display:none;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);z-index:1000;';
+    modal.innerHTML = `<div id="modalContent" style="background:#1e1e2f;padding:1rem;border-radius:8px;max-height:80%;overflow:auto;width:90%;max-width:500px;"></div>`;
+    document.body.appendChild(modal);
+
+    let currentPage=0,pageSize=10,currentHabit=0;
+
+    function renderLogs(logs){
+        const inner = document.getElementById('modalContent');
+        let html='<table class="habit-table" style="width:100%">';
+        html+='<thead><tr><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+        logs.forEach(l=>{
+            html+=`<tr><td>${l.scheduledDateTime.replace('T',' ')}</td><td>${l.completed?'✔':'❌'}</td><td>${l.completed?'':`<button onclick=\"completeLog(${l.id})\">Complete</button>`}</td></tr>`;
+        });
+        html+='</tbody></table>';
+        html+=`<div style="margin-top:0.5rem;display:flex;justify-content:space-between"><button onclick="prevPage()">Prev</button><span>Page ${currentPage+1}</span><button onclick="nextPage()">Next</button></div>`;
+        html+='<div style="text-align:right;margin-top:0.5rem;"><button onclick="closeModal()">Close</button></div>';
+        inner.innerHTML=html;
+    }
+
+    function fetchLogs(){
+        fetch(`/api/habits/${currentHabit}/logs?page=${currentPage}&size=${pageSize}`)
+        .then(r=>r.json()).then(renderLogs);
+    }
+
+    function openHist(hId){
+        currentHabit=hId;currentPage=0;fetchLogs();modal.style.display='flex';
+    }
+    function closeModal(){modal.style.display='none';}
+    function nextPage(){currentPage++;fetchLogs();}
+    function prevPage(){if(currentPage>0){currentPage--;fetchLogs();}}
+    function completeLog(id){
+        fetch(`/api/habits/logs/${id}/complete`,{method:'POST'}).then(()=>fetchLogs());
+    }
+/*]]>*/
+</script>
+</body>
+</html>

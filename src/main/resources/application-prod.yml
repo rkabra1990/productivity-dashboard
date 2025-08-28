@@ -1,0 +1,81 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  thymeleaf:
+    cache: true
+    mode: HTML
+    prefix: classpath:/templates/
+    suffix: .html
+  messages:
+    basename: i18n/messages
+  resources:
+    add-mappings: true
+    cache:
+      period: 1h
+
+server:
+  port: ${PORT:8080}
+  error:
+    whitelabel:
+      enabled: false
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# Security
+spring:
+  security:
+    user:
+      name: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD:changeit}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    org.springframework: WARN
+    com.yourapp: DEBUG
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 7
+
+# Disable development features
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+    metrics:
+      enabled: true
+  health:
+    db:
+      enabled: true
+    diskSpace:
+      enabled: true
+      path: .
+      threshold: 10MB
+
+# Application specific properties
+app:
+  base-url: ${APP_BASE_URL:https://your-production-url.com}
+  sleep:
+    start: ${SLEEP_START:23:00}
+    end: ${SLEEP_END:06:00}
+
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
+  chat-id: ${TELEGRAM_CHAT_ID:}

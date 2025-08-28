@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Pomodoro Timer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --work-color: #00e676;
+            --break-color: #64b5f6;
+            --bg-color: #161625;
+            --card-bg: #1e1e2f;
+            --text-color: #ddd;
+            --accent-color: #9cdcfe;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+        }
+        
+        h1, h2, h3 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        /* Timer Container */
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        /* Timer Display */
+        .timer-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.1s linear;
+            transform-origin: 50% 50%;
+        }
+        
+        .timer-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1;
+        }
+        
+        .time {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .session-type {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-transform: capitalize;
+        }
+        
+        .session-counter {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--work-color);
+            color: #000;
+        }
+        
+        .btn-secondary {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-danger {
+            background-color: #ff5252;
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .timer-wrapper {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .time {
+                font-size: 3rem;
+            }
+            
+            .btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" id="csrfToken"/>
+    
+    <div class="container">
+        <h1><i class="fas fa-tomato"></i> Pomodoro Timer</h1>
+        
+        <div class="timer-container">
+            <div class="timer-wrapper">
+                <svg class="progress-ring" viewBox="0 0 100 100">
+                    <circle class="progress-ring__circle" 
+                            stroke="var(--work-color)" 
+                            stroke-width="4" 
+                            fill="transparent" 
+                            r="45" 
+                            cx="50" 
+                            cy="50"
+                            stroke-dasharray="282.743"
+                            stroke-dashoffset="0"/>
+                </svg>
+                <div class="timer-display">
+                    <div class="time" id="timerDisplay">25:00</div>
+                    <div class="session-type" id="sessionType">Work</div>
+                    <div class="session-counter" id="sessionCounter">Session 1/4</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary" onclick="startTimer()" title="Start (Space)">
+                    <i class="fas fa-play"></i> Start
+                </button>
+                <button id="pauseBtn" class="btn btn-secondary" onclick="pauseTimer()" disabled title="Pause (Space)">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button id="stopBtn" class="btn btn-danger" onclick="stopTimer()" title="Stop (Esc)">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+                <button id="resetBtn" class="btn btn-secondary" onclick="resetTimer()" title="Reset">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+        
+        <div class="task-selection">
+            <div class="form-group">
+                <label for="sessionSelect"><i class="fas fa-tasks"></i> Select Task or Habit</label>
+                <select id="sessionSelect" class="form-control">
+                    <option value="" disabled selected>-- Select a task or habit --</option>
+                    <option th:each="task : ${tasks}" 
+                            th:value="${task.id + ':task'}"
+                            th:text="'📝 ' + ${task.title}">
+                    </option>
+                    <option th:each="habit : ${habits}" 
+                            th:value="${habit.id + ':habit'}"
+                            th:text="'🔄 ' + ${habit.name}">
+                    </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button id="completeTaskBtn" class="btn btn-primary" onclick="completeTask()" disabled>
+                    <i class="fas fa-check"></i> Mark as Completed
+                </button>
+            </div>
+        </div>
+        
+        <div class="settings">
+            <h3><i class="fas fa-cog"></i> Timer Settings</h3>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="workDuration">Work Duration (min)</label>
+                    <input type="number" id="workDuration" min="1" max="120" value="25">
+                </div>
+                <div class="setting-item">
+                    <label for="shortBreakDuration">Short Break (min)</label>
+                    <input type="number" id="shortBreakDuration" min="1" max="30" value="5">
+                </div>
+                <div class="setting-item">
+                    <label for="longBreakDuration">Long Break (min)</label>
+                    <input type="number" id="longBreakDuration" min="1" max="60" value="15">
+                </div>
+                <div class="setting-item">
+                    <label for="sessionsBeforeLongBreak">Sessions Before Long Break</label>
+                    <input type="number" id="sessionsBeforeLongBreak" min="1" max="10" value="4">
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="autoStartBreaks" checked>
+                        Auto-start breaks
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="playSounds" checked>
+                        Enable sounds
+                    </label>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+                <button class="btn btn-secondary" onclick="applyPreset('default')">Default</button>
+                <button class="btn btn-secondary" onclick="applyPreset('focused')">Focused</button>
+                <button class="btn btn-secondary" onclick="applyPreset('relaxed')">Relaxed</button>
+            </div>
+        </div>
+        
+        <div class="history">
+            <h3><i class="fas fa-history"></i> Today's Sessions</h3>
+            <ul class="history-list" id="sessionHistory">
+                <li class="history-item">
+                    <span class="history-task">No sessions yet</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen (F11)">
+        <i class="fas fa-expand"></i>
+    </button>
+    
+    <div class="keyboard-shortcuts" title="Keyboard Shortcuts">
+        <span class="key">Space</span> Start/Pause • 
+        <span class="key">Esc</span> Stop • 
+        <span class="key">F11</span> Fullscreen
+    </div>
+    
+    <!-- Audio elements for notifications -->
+    <audio id="workEndSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="breakEndSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/210/210-preview.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script>
+        // DOM Elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const sessionTypeDisplay = document.getElementById('sessionType');
+        const sessionCounter = document.getElementById('sessionCounter');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const completeTaskBtn = document.getElementById('completeTaskBtn');
+        const sessionSelect = document.getElementById('sessionSelect');
+        const progressCircle = document.querySelector('.progress-ring__circle');
+        const workEndSound = document.getElementById('workEndSound');
+        const breakEndSound = document.getElementById('breakEndSound');
+        const sessionHistory = document.getElementById('sessionHistory');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        
+        // Timer state
+        let timer;
+        let timeLeft;
+        let totalTime;
+        let isRunning = false;
+        let isWorkSession = true;
+        let sessionCount = 0;
+        let sessionsBeforeLongBreak = 4;
+        let workDuration = 25;
+        let shortBreakDuration = 5;
+        let longBreakDuration = 15;
+        let autoStartBreaks = true;
+        let playSounds = true;
+        let currentTask = null;
+        
+        // Initialize the app
+        function init() {
+            loadSettings();
+            setupEventListeners();
+            updateSessionCounter();
+            startWorkSession();
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (isRunning) pauseTimer();
+                    else startTimer();
+                } else if (e.code === 'Escape') {
+                    stopTimer();
+                } else if (e.code === 'F11') {
+                    e.preventDefault();
+                    toggleFullscreen();
+                }
+            });
+            
+            // Fullscreen button
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            
+            // Task selection
+            sessionSelect.addEventListener('change', (e) => {
+                const value = e.target.value;
+                if (value) {
+                    const [id, type] = value.split(':');
+                    currentTask = { id, type };
+                    completeTaskBtn.disabled = false;
+                } else {
+                    currentTask = null;
+                    completeTaskBtn.disabled = true;
+                }
+            });
+        }
+        
+        // Timer functions
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                updateButtonStates();
+                
+                timer = setInterval(() => {
+                    timeLeft--;
+                    updateDisplay();
+                    updateProgressCircle();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        isRunning = false;
+                        
+                        if (isWorkSession) {
+                            sessionCount++;
+                            updateSessionCounter();
+                            playSound(workEndSound);
+                            showNotification('Time for a break!', { body: 'Take a few minutes to rest.' });
+                            
+                            if (sessionCount % sessionsBeforeLongBreak === 0) {
+                                startLongBreak();
+                            } else {
+                                startShortBreak();
+                            }
+                        } else {
+                            playSound(breakEndSound);
+                            showNotification('Break is over!', { body: 'Time to get back to work.' });
+                            startWorkSession();
+                        }
+                    }
+                }, 1000);
+            }
+        }
+        
+        function pauseTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            updateButtonStates();
+        }
+        
+        function stopTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            
+            if (isWorkSession) {
+                startWorkSession();
+            } else {
+                startShortBreak();
+            }
+            
+            updateButtonStates();
+        }
+        
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            
+            if (isWorkSession) {
+                startWorkSession();
+            } else {
+                if (sessionCount % sessionsBeforeLongBreak === 0) {
+                    startLongBreak();
+                } else {
+                    startShortBreak();
+                }
+            }
+            
+            updateButtonStates();
+        }
+        
+        // Session management
+        function startWorkSession() {
+            isWorkSession = true;
+            totalTime = workDuration * 60;
+            timeLeft = totalTime;
+            sessionTypeDisplay.textContent = 'Work';
+            document.documentElement.style.setProperty('--work-color', '#00e676');
+            updateDisplay();
+            updateProgressCircle();
+            
+            if (autoStartBreaks) {
+                startTimer();
+            }
+        }
+        
+        function startShortBreak() {
+            isWorkSession = false;
+            totalTime = shortBreakDuration * 60;
+            timeLeft = totalTime;
+            sessionTypeDisplay.textContent = 'Short Break';
+            document.documentElement.style.setProperty('--work-color', '#64b5f6');
+            updateDisplay();
+            updateProgressCircle();
+            
+            if (autoStartBreaks) {
+                startTimer();
+            }
+        }
+        
+        function startLongBreak() {
+            isWorkSession = false;
+            totalTime = longBreakDuration * 60;
+            timeLeft = totalTime;
+            sessionTypeDisplay.textContent = 'Long Break';
+            document.documentElement.style.setProperty('--work-color', '#9c27b0');
+            updateDisplay();
+            updateProgressCircle();
+            
+            if (autoStartBreaks) {
+                startTimer();
+            }
+        }
+        
+        // UI Updates
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Add pulse animation when time is running low
+            if (timeLeft <= 30 && timeLeft > 0) {
+                timerDisplay.classList.add('pulse');
+            } else {
+                timerDisplay.classList.remove('pulse');
+            }
+        }
+        
+        function updateProgressCircle() {
+            if (!progressCircle) return;
+            
+            const circumference = 2 * Math.PI * 45; // 2πr, r=45
+            const offset = circumference - (timeLeft / totalTime) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+        
+        function updateButtonStates() {
+            startBtn.disabled = isRunning;
+            pauseBtn.disabled = !isRunning;
+            stopBtn.disabled = !isRunning && timeLeft === totalTime;
+            resetBtn.disabled = !isRunning && timeLeft === totalTime;
+        }
+        
+        function updateSessionCounter() {
+            sessionCounter.textContent = `Session ${sessionCount % sessionsBeforeLongBreak || sessionsBeforeLongBreak}/${sessionsBeforeLongBreak}`;
+        }
+        
+        // Task management
+        function completeTask() {
+            if (!currentTask) return;
+            
+            const { id, type } = currentTask;
+            const endpoint = type === 'task' ? '/tasks/toggle' : `/habits/${id}/complete`;
+            
+            // Show loading state
+            completeTaskBtn.disabled = true;
+            completeTaskBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking...';
+            
+            // Prepare form data
+            const formData = new URLSearchParams();
+            if (type === 'task') {
+                formData.append('id', id);
+            }
+            
+            // Add CSRF token if available
+            const csrfToken = document.getElementById('csrfToken')?.value;
+            if (csrfToken) {
+                formData.append('_csrf', csrfToken);
+            }
+            
+            // Make API call to mark as completed
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to update status');
+                return type === 'habit' ? response.json() : {};
+            })
+            .then(data => {
+                // Add to session history
+                addToHistory(currentTask);
+                
+                // Refresh the tasks and habits tabs in the background
+                refreshTabs();
+                
+                // Show success notification with habit stats if available
+                const message = type === 'habit' && data.currentStreak 
+                    ? `Current streak: ${data.currentStreak} days (Best: ${data.bestStreak} days)`
+                    : 'Great job! Keep it up!';
+                
+                showNotification(`${type === 'task' ? 'Task' : 'Habit'} completed!`, { 
+                    body: message 
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error', { 
+                    body: `Failed to mark ${type} as completed. Please try again.`,
+                    icon: '/images/error.png'
+                });
+            })
+            .finally(() => {
+                // Reset selection and UI
+                sessionSelect.value = '';
+                currentTask = null;
+                completeTaskBtn.disabled = true;
+                completeTaskBtn.innerHTML = '<i class="fas fa-check"></i> Mark as Completed';
+            });
+        }
+        
+        // Refresh tasks and habits tabs
+        function refreshTabs() {
+            // Open hidden iframe to refresh tasks and habits pages
+            const refreshIframe = document.createElement('iframe');
+            refreshIframe.style.display = 'none';
+            refreshIframe.onload = function() {
+                // Clean up after loading
+                setTimeout(() => {
+                    if (document.body.contains(refreshIframe)) {
+                        document.body.removeChild(refreshIframe);
+                    }
+                }, 1000);
+            };
+            
+            // Load both pages to refresh their data
+            refreshIframe.src = '/tasks';
+            document.body.appendChild(refreshIframe);
+            
+            // Small delay to prevent too many requests at once
+            setTimeout(() => {
+                const habitsIframe = document.createElement('iframe');
+                habitsIframe.style.display = 'none';
+                habitsIframe.onload = function() {
+                    setTimeout(() => {
+                        if (document.body.contains(habitsIframe)) {
+                            document.body.removeChild(habitsIframe);
+                        }
+                    }, 1000);
+                };
+                habitsIframe.src = '/habits';
+                document.body.appendChild(habitsIframe);
+            }, 500);
+        }
+        
+        function addToHistory(task) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const listItem = document.createElement('li');
+            listItem.className = 'history-item';
+            
+            const taskText = document.createElement('span');
+            taskText.className = 'history-task';
+            taskText.textContent = task.type === 'task' ? 
+                `✅ Task: ${document.querySelector(`#sessionSelect option[value="${task.id}:task"]`).textContent.replace('📝 ', '')}` :
+                `✅ Habit: ${document.querySelector(`#sessionSelect option[value="${task.id}:habit"]`).textContent.replace('🔄 ', '')}`;
+            
+            const timeElement = document.createElement('span');
+            timeElement.className = 'history-time';
+            timeElement.textContent = timeString;
+            
+            listItem.appendChild(taskText);
+            listItem.appendChild(timeElement);
+            
+            // If it's the first item and it's the placeholder, remove the placeholder
+            if (sessionHistory.firstChild && sessionHistory.firstChild.textContent.includes('No sessions')) {
+                sessionHistory.innerHTML = '';
+            }
+            
+            sessionHistory.insertBefore(listItem, sessionHistory.firstChild);
+        }
+        
+        // Settings
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('pomodoroSettings')) || {};
+            
+            workDuration = settings.workDuration || 25;
+            shortBreakDuration = settings.shortBreakDuration || 5;
+            longBreakDuration = settings.longBreakDuration || 15;
+            sessionsBeforeLongBreak = settings.sessionsBeforeLongBreak || 4;
+            autoStartBreaks = settings.autoStartBreaks !== undefined ? settings.autoStartBreaks : true;
+            playSounds = settings.playSounds !== undefined ? settings.playSounds : true;
+            
+            // Update UI
+            document.getElementById('workDuration').value = workDuration;
+            document.getElementById('shortBreakDuration').value = shortBreakDuration;
+            document.getElementById('longBreakDuration').value = longBreakDuration;
+            document.getElementById('sessionsBeforeLongBreak').value = sessionsBeforeLongBreak;
+            document.getElementById('autoStartBreaks').checked = autoStartBreaks;
+            document.getElementById('playSounds').checked = playSounds;
+        }
+        
+        function saveSettings() {
+            const settings = {
+                workDuration: parseInt(document.getElementById('workDuration').value),
+                shortBreakDuration: parseInt(document.getElementById('shortBreakDuration').value),
+                longBreakDuration: parseInt(document.getElementById('longBreakDuration').value),
+                sessionsBeforeLongBreak: parseInt(document.getElementById('sessionsBeforeLongBreak').value),
+                autoStartBreaks: document.getElementById('autoStartBreaks').checked,
+                playSounds: document.getElementById('playSounds').checked
+            };
+            
+            localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+            
+            // Update current settings
+            workDuration = settings.workDuration;
+            shortBreakDuration = settings.shortBreakDuration;
+            longBreakDuration = settings.longBreakDuration;
+            sessionsBeforeLongBreak = settings.sessionsBeforeLongBreak;
+            autoStartBreaks = settings.autoStartBreaks;
+            playSounds = settings.playSounds;
+            
+            // Reset the current session
+            resetTimer();
+            
+            showNotification('Settings saved!', { body: 'Your timer settings have been updated.' });
+        }
+        
+        function applyPreset(preset) {
+            const presets = {
+                default: { work: 25, short: 5, long: 15, sessions: 4 },
+                focused: { work: 50, short: 10, long: 20, sessions: 4 },
+                relaxed: { work: 20, short: 5, long: 10, sessions: 3 }
+            };
+            
+            const selected = presets[preset] || presets.default;
+            
+            document.getElementById('workDuration').value = selected.work;
+            document.getElementById('shortBreakDuration').value = selected.short;
+            document.getElementById('longBreakDuration').value = selected.long;
+            document.getElementById('sessionsBeforeLongBreak').value = selected.sessions;
+            
+            // Auto-save the preset
+            saveSettings();
+        }
+        
+        // Helper functions
+        function playSound(audioElement) {
+            if (playSounds && audioElement) {
+                audioElement.currentTime = 0;
+                audioElement.play().catch(e => console.log('Audio playback failed:', e));
+            }
+        }
+        
+        function showNotification(title, options) {
+            if (!('Notification' in window)) return;
+            
+            if (Notification.permission === 'granted') {
+                new Notification(title, options);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification(title, options);
+                    }
+                });
+            }
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+                fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                }
+            }
+        }
+        
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+    
+    <div th:replace="fragments/footer :: footer"></div>
+    updateDisplay();
+</script>
+
+</body>
+</html>

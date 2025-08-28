@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="base(title, content)"
+      th:replace="fragments/layout :: layout(~{::title}, ~{::#main-content})">
+<head>
+    <title th:text="${title} + ' | ProdDash'">ProdDash</title>
+    
+    <!-- Additional head content specific to base template can go here -->
+    
+    <div id="main-content" th:remove="tag">
+        <!-- Content will be inserted here by the layout -->
+        <th:block th:insert="${content}" />
+    </div>
+</head>
+</html>
