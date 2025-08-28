@@ -1,0 +1,38 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Build files
+*.jar
+*.war
+*.ear
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+*.properties
+
+# Git
+.git
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Local development files
+src/main/resources/application-dev.yml
+src/main/resources/application-local.yml
