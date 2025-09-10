@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: productivity-app
+    hostname: productivity.local
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - SERVER_HOST=productivity.local
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3006/productivitydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Sunshine@84
+      - SPRING_JPA_HIBERNATE_DDL-AUTO=update
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=changeit
+      - SPRING_PROFILES_ACTIVE=prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "productivity.local:127.0.0.1"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    driver: bridge

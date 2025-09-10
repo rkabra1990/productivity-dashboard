@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: ${DATABASE_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3006/productivitydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:Sunshine@84}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -21,9 +22,14 @@ spring:
     add-mappings: true
     cache:
       period: 1h
+  security:
+    user:
+      name: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD:changeit}
 
 server:
-  port: ${PORT:8080}
+  port: 8080
+  address: 0.0.0.0
   error:
     whitelabel:
       enabled: false
@@ -31,13 +37,8 @@ server:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
     min-response-size: 1024
-
-# Security
-spring:
-  security:
-    user:
-      name: ${ADMIN_USERNAME:admin}
-      password: ${ADMIN_PASSWORD:changeit}
+  servlet:
+    context-path: /
 
 # Logging
 logging:
@@ -49,33 +50,24 @@ logging:
     name: logs/application.log
     max-size: 10MB
     max-history: 7
-
-# Disable development features
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
-    metrics:
-      enabled: true
-  health:
-    db:
-      enabled: true
-    diskSpace:
-      enabled: true
-      path: .
-      threshold: 10MB
+    total-size-cap: 100MB
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 # Application specific properties
 app:
-  base-url: ${APP_BASE_URL:https://your-production-url.com}
-  sleep:
-    start: ${SLEEP_START:23:00}
-    end: ${SLEEP_END:06:00}
+  name: Productivity Dashboard
+  version: 1.0.0
+  security:
+    jwt:
+      secret: your-secret-key-here
+      expiration: 86400000  # 24 hours in milliseconds
 
+# Telegram Bot Configuration
 telegram:
-  bot-token: ${TELEGRAM_BOT_TOKEN:}
-  chat-id: ${TELEGRAM_CHAT_ID:}
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:your-telegram-bot-token}
+    username: ${TELEGRAM_BOT_USERNAME:your_bot_username}
+    chat-id: ${TELEGRAM_CHAT_ID:your_chat_id}
+    enabled: ${TELEGRAM_ENABLED:false}  # Set to true to enable Telegram notifications

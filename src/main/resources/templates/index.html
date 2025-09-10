@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#content})}">
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
 <head>
     <title>Welcome | ProdDash</title>
 </head>
 <body>
-    <div id="content">
+    <th:block layout:fragment="content">
         <div class="container">
             <h1>Welcome to Productivity Dashboard</h1>
             <div class="dashboard-grid">
@@ -36,6 +37,6 @@
                 </a>
             </div>
         </div>
-    </div>
+    </th:block>
 </body>
 </html>
