@@ -12,12 +12,14 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -71,6 +73,20 @@ public class TaskService {
         return repo.findByCompleted(true);
     }
     
+    public Map<String, List<Task>> getCompletedTasksGroupedByMonth() {
+        List<Task> completedTasks = repo.findByCompleted(true);
+        Map<String, List<Task>> tasksByMonth = new TreeMap<>(Collections.reverseOrder());
+        
+        for (Task task : completedTasks) {
+            if (task.getCompletionTimestamp() != null) {
+                String monthYear = task.getCompletionTimestamp().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+                tasksByMonth.computeIfAbsent(monthYear, k -> new ArrayList<>()).add(task);
+            }
+        }
+        
+        return tasksByMonth;
+    }
+    
     public Map<String, Long> getTodayTaskStats() {
 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
@@ -90,7 +106,14 @@ public class TaskService {
         Optional<Task> taskOpt = repo.findById(id);
         if (taskOpt.isPresent()) {
             Task task = taskOpt.get();
-            task.setCompleted(!task.isCompleted());
+            boolean newCompletedState = !task.isCompleted();
+            task.setCompleted(newCompletedState);
+            // Set completion timestamp when marking as completed
+            if (newCompletedState && task.getCompletionTimestamp() == null) {
+                task.setCompletionTimestamp(LocalDateTime.now());
+            } else if (!newCompletedState) {
+                task.setCompletionTimestamp(null);
+            }
             repo.save(task);
         }
     }

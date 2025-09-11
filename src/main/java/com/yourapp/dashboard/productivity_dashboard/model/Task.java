@@ -4,6 +4,7 @@ import com.yourapp.dashboard.productivity_dashboard.service.Priority;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import jakarta.persistence.Column;
 
 @Entity
 public class Task {
@@ -20,6 +21,9 @@ public class Task {
     private boolean completed;
 
     private boolean notifSent;
+    
+    @Column(name = "completion_timestamp")
+    private LocalDateTime completionTimestamp;
 
     // ✅ Getters & Setters
     // If using Lombok: @Getter @Setter
@@ -77,5 +81,13 @@ public class Task {
 
     public void setNotifSent(boolean notifSent) {
         this.notifSent = notifSent;
+    }
+
+    public LocalDateTime getCompletionTimestamp() {
+        return completionTimestamp;
+    }
+
+    public void setCompletionTimestamp(LocalDateTime completionTimestamp) {
+        this.completionTimestamp = completionTimestamp;
     }
 }

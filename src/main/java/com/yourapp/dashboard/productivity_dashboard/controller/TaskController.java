@@ -53,19 +53,21 @@ public class TaskController {
         // Get completed tasks for the selected year
         Map<Month, List<Task>> tasksByMonth = service.getTasksByYearGroupedByMonth(selectedYear);
         
-        // Get only incomplete tasks for the main view
-        List<Task> incompleteTasks = service.getPendingTasks();
+        // Get tasks
+        List<Task> pendingTasks = service.getPendingTasks();
         List<Task> completedTasks = service.getCompletedTasks();
+        
+        // Get completed tasks grouped by month
+        Map<String, List<Task>> completedTasksByMonth = service.getCompletedTasksGroupedByMonth();
 
         // CSRF token is automatically added by Thymeleaf
 
         model.addAttribute("selectedYear", selectedYear);
-        model.addAttribute("tasksByMonth", tasksByMonth);
+        model.addAttribute("tasksByMonth", completedTasksByMonth);
         model.addAttribute("years", service.getAvailableYears());
         model.addAttribute("task", new Task());
-        model.addAttribute("tasks", incompleteTasks);
+        model.addAttribute("tasks", pendingTasks);
         model.addAttribute("completedTasksCount", completedTasks.size());
-        model.addAttribute("testMessage", "Template is rendering correctly!");
 
         return "tasks";
     }
