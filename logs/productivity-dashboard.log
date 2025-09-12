@@ -2636,3 +2636,36 @@ Caused by: org.thymeleaf.exceptions.TemplateInputException: Error resolving temp
 	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979)
 	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
 	... 102 common frames omitted
+2025-09-12 01:27:12.675 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-09-12 01:27:12.689 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-09-12 01:27:19.304 [main] INFO  c.y.d.p.ProductivityDashboardApplication - Starting ProductivityDashboardApplication v0.0.1-SNAPSHOT using Java 17.0.16 with PID 1 (/app/app.jar started by root in /app)
+2025-09-12 01:27:19.306 [main] DEBUG c.y.d.p.ProductivityDashboardApplication - Running with Spring Boot v3.5.3, Spring v6.2.8
+2025-09-12 01:27:19.307 [main] INFO  c.y.d.p.ProductivityDashboardApplication - The following 1 profile is active: "prod"
+2025-09-12 01:27:25.076 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-09-12 01:27:25.486 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@608b906d
+2025-09-12 01:27:25.489 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-09-12 01:27:26.405 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-09-12 01:27:26.407 [main] WARN  org.hibernate.orm.deprecation - HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-09-12 01:27:55.921 [main] INFO  c.y.d.p.ProductivityDashboardApplication - Starting ProductivityDashboardApplication v0.0.1-SNAPSHOT using Java 17.0.16 with PID 1 (/app/app.jar started by root in /app)
+2025-09-12 01:27:55.975 [main] DEBUG c.y.d.p.ProductivityDashboardApplication - Running with Spring Boot v3.5.3, Spring v6.2.8
+2025-09-12 01:27:55.981 [main] INFO  c.y.d.p.ProductivityDashboardApplication - The following 1 profile is active: "prod"
+2025-09-12 01:28:00.190 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-09-12 01:28:00.191 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.42]
+2025-09-12 01:28:00.305 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-09-12 01:28:01.086 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-09-12 01:28:01.498 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@173cfb01
+2025-09-12 01:28:01.503 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-09-12 01:28:02.397 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-09-12 01:28:02.400 [main] WARN  org.hibernate.orm.deprecation - HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-09-12 01:28:08.488 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-09-12 01:28:09.087 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 1 endpoint beneath base path '/actuator'
+2025-09-12 01:28:10.288 [main] INFO  c.y.d.p.ProductivityDashboardApplication - Started ProductivityDashboardApplication in 16.085 seconds (process running for 17.165)
+2025-09-12 01:28:13.506 [http-nio-0.0.0.0-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-09-12 01:28:26.527 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select distinct year(t1_0.due_date) from task t1_0 order by year(t1_0.due_date) desc
+2025-09-12 01:28:26.593 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select t1_0.id,t1_0.category,t1_0.completed,t1_0.completion_timestamp,t1_0.due_date,t1_0.notif_sent,t1_0.priority,t1_0.title from task t1_0 where t1_0.due_date between ? and ?
+2025-09-12 01:28:26.623 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select t1_0.id,t1_0.category,t1_0.completed,t1_0.completion_timestamp,t1_0.due_date,t1_0.notif_sent,t1_0.priority,t1_0.title from task t1_0 where t1_0.completed=?
+2025-09-12 01:28:26.674 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select t1_0.id,t1_0.category,t1_0.completed,t1_0.completion_timestamp,t1_0.due_date,t1_0.notif_sent,t1_0.priority,t1_0.title from task t1_0 where t1_0.completed=?
+2025-09-12 01:28:26.682 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select t1_0.id,t1_0.category,t1_0.completed,t1_0.completion_timestamp,t1_0.due_date,t1_0.notif_sent,t1_0.priority,t1_0.title from task t1_0 where t1_0.completed=?
+2025-09-12 01:28:26.686 [http-nio-0.0.0.0-8080-exec-2] DEBUG org.hibernate.SQL - select distinct year(t1_0.due_date) from task t1_0 order by year(t1_0.due_date) desc
+2025-09-12 01:28:27.283 [http-nio-0.0.0.0-8080-exec-2] WARN  o.t.s.p.AbstractStandardFragmentInsertionTagProcessor - [THYMELEAF][http-nio-0.0.0.0-8080-exec-2][tasks] Deprecated unwrapped fragment expression "fragments/header :: header" found in template tasks, line 25, col 6. Please use the complete syntax of fragment expressions instead ("~{fragments/header :: header}"). The old, unwrapped syntax for fragment expressions will be removed in future versions of Thymeleaf.
+2025-09-12 01:28:27.611 [http-nio-0.0.0.0-8080-exec-2] WARN  o.t.s.p.AbstractStandardFragmentInsertionTagProcessor - [THYMELEAF][http-nio-0.0.0.0-8080-exec-2][tasks] Deprecated unwrapped fragment expression "fragments/footer :: footer" found in template tasks, line 408, col 6. Please use the complete syntax of fragment expressions instead ("~{fragments/footer :: footer}"). The old, unwrapped syntax for fragment expressions will be removed in future versions of Thymeleaf.
