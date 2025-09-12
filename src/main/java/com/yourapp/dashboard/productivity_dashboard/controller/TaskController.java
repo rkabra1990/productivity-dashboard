@@ -5,6 +5,7 @@ import com.yourapp.dashboard.productivity_dashboard.service.TaskService;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -38,7 +39,19 @@ public class TaskController {
     }
     
     @GetMapping("/tasks")
-    public String viewTasks(@RequestParam(value = "year", required = false) Integer year, Model model, HttpServletRequest request) {
+    public String viewTasks(@RequestParam(value = "year", required = false) Integer year, 
+                          Model model, 
+                          HttpServletRequest request) {
+        // Add CSRF token to model
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            org.springframework.security.web.csrf.CsrfToken csrfToken = 
+                (org.springframework.security.web.csrf.CsrfToken) request.getAttribute("_csrf");
+            if (csrfToken != null) {
+                model.addAttribute("_csrf", csrfToken);
+            }
+        }
+        
         List<Integer> years = service.getAvailableYears();
 
         int selectedYear;
