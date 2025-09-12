@@ -232,98 +232,101 @@
       </div> <!-- End of Pending Tasks Tab -->
       
       <!-- Completed Tasks Tab -->
-      
-      <!-- Completed Tasks Tab -->
       <div class="tab-pane fade" id="completed" role="tabpanel" aria-labelledby="completed-tab">
         <div class="mb-4">
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h3 class="mb-0">Completed Tasks</h3>
               <p class="text-muted mb-0">
-                <span th:text="${completedTasksCount}">0</span> tasks completed
+                <span th:text="${completedTasksCount}">0</span> <span th:text="${completedTasksCount == 1 ? 'task' : 'tasks'}">tasks</span> completed
               </p>
             </div>
-            <div>
-              <button type="button" class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+            <div th:if="${not #maps.isEmpty(tasksByMonth)}">
+              <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
                 <i class="fas fa-file-export me-1"></i> Export
               </button>
             </div>
           </div>
         </div>
         
-        <!-- Month Tabs -->
-        <ul class="nav nav-tabs mb-3" id="monthTabs" role="tablist">
-          <li class="nav-item" role="presentation" th:each="monthEntry : ${tasksByMonth}">
-            <button class="nav-link" 
-                    th:classappend="${monthEntry.key == selectedMonth ? 'active' : ''}"
-                    th:id="'month-' + ${monthEntry.key.replace(' ', '-')}"
-                    data-bs-toggle="tab" 
-                    th:data-bs-target="'#month-' + ${monthEntry.key.replace(' ', '-')}-content"
-                    type="button" 
-                    role="tab" 
-                    th:aria-controls="'month-' + ${monthEntry.key.replace(' ', '-')}"
-                    th:aria-selected="${monthEntry.key == selectedMonth ? 'true' : 'false'}">
-              <span th:text="${monthEntry.key}"></span>
-              <span class="badge bg-primary ms-1" th:text="${monthEntry.value.size()}"></span>
-            </button>
-          </li>
-        </ul>
-        
-        <!-- Month Tab Content -->
-        <div class="tab-content" id="monthTabsContent">
-          <div th:each="monthEntry : ${tasksByMonth}" 
-               th:classappend="'tab-pane fade' + (${monthEntry.key == selectedMonth} ? ' show active' : '')"
-               th:id="'month-' + ${monthEntry.key.replace(' ', '-')}-content"
-               role="tabpanel"
-               th:aria-labelledby="'month-' + ${monthEntry.key.replace(' ', '-')}">
-               
-            <div class="d-flex justify-content-end mb-3">
-              <button type="button" class="btn btn-sm btn-danger" 
-                      th:onclick="'deleteMonthTasks(\'' + ${monthEntry.key} + '\')'">
-                <i class="fas fa-trash me-1"></i> Delete All
+        <div th:if="${not #maps.isEmpty(tasksByMonth)}">
+          <!-- Month Tabs -->
+          <ul class="nav nav-tabs mb-3" id="monthTabs" role="tablist">
+            <li class="nav-item" role="presentation" th:each="monthEntry : ${tasksByMonth}">
+              <button class="nav-link" 
+                      th:classappend="${monthEntry.key == selectedMonth ? 'active' : ''}"
+                      th:with="monthId=${#strings.replace(monthEntry.key, ' ', '-')}"
+                      th:id="'month-' + ${monthId}"
+                      th:attr="data-bs-target='#month-' + ${monthId} + '-content'"
+                      th:aria-controls="'month-' + ${monthId}"
+                      th:aria-selected="${monthEntry.key == selectedMonth ? 'true' : 'false'}"
+                      data-bs-toggle="tab" 
+                      type="button" 
+                      role="tab">
+                <span th:text="${monthEntry.key}"></span>
+                <span class="badge bg-primary ms-1" th:text="${monthEntry.value.size()}"></span>
               </button>
-            </div>
-            
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-dark">
-                  <tr>
-                    <th>Task</th>
-                    <th>Category</th>
-                    <th>Priority</th>
-                    <th>Due Date</th>
-                    <th>Completed On</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr th:each="task : ${monthEntry.value}">
-                    <td th:text="${task.title}" class="task-completed"></td>
-                    <td>
-                      <span th:if="${task.category}" class="badge bg-secondary" th:text="${task.category}"></span>
-                    </td>
-                    <td>
-                      <span class="badge" 
-                            th:classappend="'priority-' + ${task.priority}" 
-                            th:text="${task.priority}"></span>
-                    </td>
-                    <td th:text="${#temporals.format(task.dueDate, 'MMM dd, yyyy')}"></td>
-                    <td th:text="${#temporals.format(task.completionTimestamp, 'MMM dd, yyyy HH:mm')}"></td>
-                    <td>
-                      <button type="button" class="btn btn-sm btn-outline-danger" 
-                              th:onclick="'deleteTask(' + ${task.id} + ')'">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            </li>
+          </ul>
+          
+          <!-- Month Tab Content -->
+          <div class="tab-content" id="monthTabsContent">
+            <div th:each="monthEntry : ${tasksByMonth}" 
+                 th:with="monthId=${#strings.replace(monthEntry.key, ' ', '-')}"
+                 th:class="'tab-pane fade' + (${monthEntry.key == selectedMonth} ? ' show active' : '')"
+                 th:id="'month-' + ${monthId} + '-content'"
+                 role="tabpanel">
+                 
+              <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn btn-sm btn-danger delete-month-btn" 
+                        th:data-month="${monthEntry.key}"
+                        th:title="'Delete all tasks for ' + ${monthEntry.key}">
+                  <i class="fas fa-trash me-1"></i> Delete All
+                </button>
+              </div>
+              
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-dark">
+                    <tr>
+                      <th>Task</th>
+                      <th>Category</th>
+                      <th>Priority</th>
+                      <th>Due Date</th>
+                      <th>Completed On</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr th:each="task : ${monthEntry.value}">
+                      <td th:text="${task.title}" class="text-decoration-line-through"></td>
+                      <td>
+                        <span th:if="${task.category}" class="badge bg-secondary" th:text="${task.category}"></span>
+                      </td>
+                      <td>
+                        <span class="badge" 
+                              th:class="${task.priority != null ? 'priority-' + #strings.toLowerCase(task.priority) : ''}" 
+                              th:text="${task.priority}"></span>
+                      </td>
+                      <td th:text="${#temporals.format(task.dueDate, 'MMM dd, yyyy')}"></td>
+                      <td th:text="${#temporals.format(task.completionTimestamp, 'MMM dd, yyyy HH:mm')}"></td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                th:onclick="'deleteTask(' + ${task.id} + ')'"
+                                title="Delete this task">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
         
         <div th:if="${#maps.isEmpty(tasksByMonth)}" class="alert alert-info">
-          No completed tasks found.
+          <i class="fas fa-info-circle me-2"></i> No completed tasks found. Tasks will appear here once marked as completed.
         </div>
       </div>
     </div>
@@ -475,9 +478,20 @@
   
   // Initialize tooltips
   document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Handle delete month button clicks
+    document.querySelectorAll('.delete-month-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const month = this.getAttribute('data-month');
+        if (month && confirm('Are you sure you want to delete all tasks for ' + month + '?')) {
+          deleteMonthTasks(month);
+        }
+      });
     });
   });
 </script>

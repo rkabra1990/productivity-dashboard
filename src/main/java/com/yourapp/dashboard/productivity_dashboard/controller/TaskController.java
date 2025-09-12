@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -63,19 +64,22 @@ public class TaskController {
             selectedYear = LocalDate.now().getYear(); // no data at all
         }
         
-        // Get completed tasks for the selected year
-        Map<Month, List<Task>> tasksByMonth = service.getTasksByYearGroupedByMonth(selectedYear);
-        
         // Get tasks
         List<Task> pendingTasks = service.getPendingTasks();
         List<Task> completedTasks = service.getCompletedTasks();
         
         // Get completed tasks grouped by month
         Map<String, List<Task>> completedTasksByMonth = service.getCompletedTasksGroupedByMonth();
+        
+        // Get the current month as the default selected month if available
+        String currentMonthYear = LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+        String selectedMonth = completedTasksByMonth.isEmpty() ? "" : 
+            completedTasksByMonth.containsKey(currentMonthYear) ? currentMonthYear : 
+            completedTasksByMonth.keySet().iterator().next();
 
-        // CSRF token is automatically added by Thymeleaf
-
+        // Add attributes to the model
         model.addAttribute("selectedYear", selectedYear);
+        model.addAttribute("selectedMonth", selectedMonth);
         model.addAttribute("tasksByMonth", completedTasksByMonth);
         model.addAttribute("years", service.getAvailableYears());
         model.addAttribute("task", new Task());

@@ -78,11 +78,22 @@ public class TaskService {
         Map<String, List<Task>> tasksByMonth = new TreeMap<>(Collections.reverseOrder());
         
         for (Task task : completedTasks) {
-            if (task.getCompletionTimestamp() != null) {
-                String monthYear = task.getCompletionTimestamp().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
-                tasksByMonth.computeIfAbsent(monthYear, k -> new ArrayList<>()).add(task);
+            LocalDateTime timestamp = task.getCompletionTimestamp();
+            // If completion timestamp is null but task is marked as completed, use current time
+            if (timestamp == null) {
+                timestamp = LocalDateTime.now();
+                task.setCompletionTimestamp(timestamp);
+                repo.save(task); // Update the task with the new timestamp
             }
+            
+            String monthYear = timestamp.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+            tasksByMonth.computeIfAbsent(monthYear, k -> new ArrayList<>()).add(task);
         }
+        
+        // Sort tasks within each month by completion timestamp (newest first)
+        tasksByMonth.forEach((month, tasks) -> {
+            tasks.sort((t1, t2) -> t2.getCompletionTimestamp().compareTo(t1.getCompletionTimestamp()));
+        });
         
         return tasksByMonth;
     }
