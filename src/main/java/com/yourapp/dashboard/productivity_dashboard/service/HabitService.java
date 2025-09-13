@@ -614,6 +614,7 @@ public class HabitService {
      */
     public List<Habit> getTodaysHabits() {
         LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
         List<Habit> habits = habitRepo.findByArchivedFalse();
 
         return habits.stream()
@@ -622,19 +623,75 @@ public class HabitService {
                     if (habit.getRecurrence() == null) return false;
 
                     switch (habit.getRecurrence()) {
+                        case HOURLY:
+                            // For hourly habits, we want to show them at all times
+                            // But we should check if there's a log for the current hour
+                            LocalDateTime startOfHour = now.withMinute(0).withSecond(0).withNano(0);
+                            LocalDateTime endOfHour = startOfHour.plusHours(1);
+                            
+                            // Check if there's a log for the current hour that's not completed
+                            List<HabitLog> currentHourLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfHour, endOfHour);
+                                
+                            // If no log exists for current hour, or it's not completed, show the habit
+                            return currentHourLogs.stream()
+                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
+                                
                         case DAILY:
-                            return true;
+                            // For daily habits, check if they're scheduled for the current time or already completed today
+                            LocalDateTime startOfDay = today.atStartOfDay();
+                            LocalDateTime endOfDay = startOfDay.plusDays(1);
+                            
+                            // Check if there's a log for today that's already completed
+                            List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfDay, endOfDay);
+                                
+                            // If no log exists for today, or it's not completed, show the habit
+                            return todayLogs.stream()
+                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
+                                
                         case WEEKLY:
-                            return habit.getWeeklyDay() != null &&
-                                    today.getDayOfWeek() == habit.getWeeklyDay();
+                            if (habit.getWeeklyDay() == null || today.getDayOfWeek() != habit.getWeeklyDay()) {
+                                return false;
+                            }
+                            // Check if already completed this week
+                            LocalDate startOfWeek = today.with(DayOfWeek.MONDAY);
+                            LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+                            LocalDateTime endOfWeekDateTime = startOfWeekDateTime.plusWeeks(1);
+                            
+                            return logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfWeekDateTime, endOfWeekDateTime)
+                                .stream()
+                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
+                                
                         case MONTHLY:
-                            return habit.getMonthlyDay() != null &&
-                                    today.getDayOfMonth() == habit.getMonthlyDay();
+                            if (habit.getMonthlyDay() == null || today.getDayOfMonth() != habit.getMonthlyDay()) {
+                                return false;
+                            }
+                            // Check if already completed this month
+                            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+                            LocalDateTime startOfNextMonth = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
+                            
+                            return logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfMonth, startOfNextMonth)
+                                .stream()
+                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
+                                
                         case YEARLY:
-                            return habit.getYearlyMonth() != null &&
-                                    habit.getYearlyDay() != null &&
-                                    today.getMonthValue() == habit.getYearlyMonth() &&
-                                    today.getDayOfMonth() == habit.getYearlyDay();
+                            if (habit.getYearlyMonth() == null || habit.getYearlyDay() == null ||
+                                today.getMonthValue() != habit.getYearlyMonth() || 
+                                today.getDayOfMonth() != habit.getYearlyDay()) {
+                                return false;
+                            }
+                            // Check if already completed this year
+                            LocalDateTime startOfYear = today.withDayOfYear(1).atStartOfDay();
+                            LocalDateTime startOfNextYear = today.plusYears(1).withDayOfYear(1).atStartOfDay();
+                            
+                            return logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfYear, startOfNextYear)
+                                .stream()
+                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
+                                
                         default:
                             return false;
                     }
@@ -687,7 +744,7 @@ public class HabitService {
         habitRepo.deleteById(id);
     }
 
-    private void updateHabitStreaks(Habit habit) {
+    public void updateHabitStreaks(Habit habit) {
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
 

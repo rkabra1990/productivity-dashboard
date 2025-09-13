@@ -5,14 +5,17 @@ import com.yourapp.dashboard.productivity_dashboard.model.HabitLog;
 import com.yourapp.dashboard.productivity_dashboard.service.HabitService;
 import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
+import com.yourapp.dashboard.productivity_dashboard.repository.HabitLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -25,7 +28,14 @@ import java.util.Map;
 public class HabitController {
 
     @Autowired 
-    private HabitService habitService;
+    private final HabitService habitService;
+    private final HabitLogRepository logRepo;
+
+    @Autowired
+    public HabitController(HabitService habitService, HabitLogRepository logRepo) {
+        this.habitService = habitService;
+        this.logRepo = logRepo;
+    }
 
     @GetMapping
     public String viewHabits(Model model) {
@@ -78,41 +88,104 @@ public class HabitController {
         return "redirect:/habits";
     }
     
-    @PostMapping("/{id}/skip")
-    @ResponseBody
-    public ResponseEntity<?> skipHabit(@PathVariable Long id) {
+    @GetMapping("/skip/{id}")
+    @Transactional
+    public String skipHabit(
+            @PathVariable Long id,
+            RedirectAttributes redirectAttributes) {
         try {
-            habitService.skipHabit(id);
-            return ResponseEntity.ok().build();
+            // Get the current date's log for this habit
+            LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+            LocalDateTime endOfDay = startOfDay.plusDays(1);
+            
+            // Find the habit with the ID
+            Habit habit = habitService.getHabitById(id)
+                .orElseThrow(() -> new RuntimeException("Habit not found with id: " + id));
+                
+            // Find today's log for this habit
+            List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                habit, startOfDay, endOfDay);
+                
+            HabitLog log;
+            if (todayLogs.isEmpty()) {
+                // If no log exists for today, create one
+                log = new HabitLog();
+                log.setHabit(habit);
+                log.setScheduledDateTime(LocalDateTime.now());
+            } else {
+                log = todayLogs.get(0);
+            }
+            
+            // Mark as skipped if not already completed
+            if (!log.getCompleted()) {
+                log.setSkipped(true);
+                log.setMissedDateTime(LocalDateTime.now());
+                log = logRepo.save(log);
+                
+                // Update habit streaks
+                habitService.updateHabitStreaks(habit);
+                
+                redirectAttributes.addFlashAttribute("successMessage", "Habit marked as skipped!");
+            } else {
+                redirectAttributes.addFlashAttribute("infoMessage", "Habit was already completed for today!");
+            }
+            
+            return "redirect:/habits";
+            
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error skipping habit: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to skip habit: " + e.getMessage());
+            return "redirect:/habits";
         }
     }
     
-    @PostMapping("/{habitId}/complete/{logId}")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> completeHabit(
+    @GetMapping("/complete/{habitId}")
+    @Transactional
+    public String completeHabit(
             @PathVariable Long habitId,
-            @PathVariable Long logId) {
+            RedirectAttributes redirectAttributes) {
+        System.out.println("Completing habit with ID: " + habitId); // Debug log
         try {
-            HabitLog log = habitService.completeHabit(habitId, logId);
-            Habit habit = log.getHabit();
+            // Get the current date's log for this habit
+            LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+            LocalDateTime endOfDay = startOfDay.plusDays(1);
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("currentStreak", habit.getCurrentStreak());
-            response.put("bestStreak", habit.getBestStreak());
-            
-            // Add next occurrence to response
-            LocalDateTime nextOccurrence = habit.getNextOccurrence();
-            response.put("nextOccurrence", nextOccurrence.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            response.put("nextOccurrenceFormatted", 
-                nextOccurrence.format(DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")));
+            // Find the habit with the ID
+            Habit habit = habitService.getHabitById(habitId)
+                .orElseThrow(() -> new RuntimeException("Habit not found with id: " + habitId));
                 
-            return ResponseEntity.ok(response);
+            // Find today's log for this habit
+            List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                habit, startOfDay, endOfDay);
+                
+            HabitLog log;
+            if (todayLogs.isEmpty()) {
+                // If no log exists for today, create one
+                log = new HabitLog();
+                log.setHabit(habit);
+                log.setScheduledDateTime(LocalDateTime.now());
+            } else {
+                log = todayLogs.get(0);
+            }
+            
+            // Mark as completed if not already
+            if (!log.getCompleted()) {
+                log.setCompleted(true);
+                log.setCompletedDateTime(LocalDateTime.now());
+                log = logRepo.save(log);
+                
+                // Update habit streaks
+                habitService.updateHabitStreaks(habit);
+                
+                redirectAttributes.addFlashAttribute("successMessage", "Habit marked as completed!");
+            } else {
+                redirectAttributes.addFlashAttribute("infoMessage", "Habit was already completed for today!");
+            }
+            
+            return "redirect:/habits";
+            
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                .body(Collections.singletonMap("error", e.getMessage()));
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to complete habit: " + e.getMessage());
+            return "redirect:/habits";
         }
     }
     
