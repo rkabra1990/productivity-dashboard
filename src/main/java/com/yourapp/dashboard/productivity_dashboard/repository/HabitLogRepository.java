@@ -37,6 +37,10 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long>, Habit
     // Find the most recent log for a habit within a date range
     Optional<HabitLog> findTopByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeDesc(
         Habit habit, LocalDateTime start, LocalDateTime end);
+        
+    // Find the first log for a habit within a date range
+    Optional<HabitLog> findFirstByHabitAndScheduledDateTimeBetween(
+        Habit habit, LocalDateTime start, LocalDateTime end);
     
     // Count completed logs within a date range
     long countByCompletedAndScheduledDateTimeBetween(boolean completed, LocalDateTime start, LocalDateTime end);

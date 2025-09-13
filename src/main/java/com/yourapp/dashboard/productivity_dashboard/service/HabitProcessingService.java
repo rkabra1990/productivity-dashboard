@@ -43,7 +43,11 @@ public class HabitProcessingService {
 
             for (Habit habit : habits) {
                 try {
-                    processSingleHabit(habit, now, startOfDay, endOfDay);
+                    if (habit.getRecurrence() == Habit.Recurrence.HOURLY) {
+                        processHourlyHabit(habit, now, startOfDay, endOfDay);
+                    } else {
+                        processSingleHabit(habit, now, startOfDay, endOfDay);
+                    }
                 } catch (Exception e) {
                     logger.error("Error processing habit: " + habit.getId(), e);
                 }
@@ -54,8 +58,72 @@ public class HabitProcessingService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void processSingleHabit(Habit habit, LocalDateTime now, 
-                                    LocalDateTime startOfDay, LocalDateTime endOfDay) {
+    public void processHourlyHabit(Habit habit, LocalDateTime now, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        try {
+            // Get existing logs for today
+            List<HabitLog> existingLogs = habitLogRepository.findByHabitAndScheduledDateTimeBetween(
+                habit, startOfDay, endOfDay);
+            
+            List<HabitLog> logsToSave = new ArrayList<>();
+            LocalDateTime currentHour = startOfDay;
+            int totalHours = 0;
+            int completedHours = 0;
+
+            // Process each hour of the day
+            while (currentHour.isBefore(endOfDay)) {
+                totalHours++;
+                LocalDateTime hourStart = currentHour;
+                LocalDateTime hourEnd = currentHour.plusHours(1);
+
+                // Find existing log for this hour
+                Optional<HabitLog> existingLog = existingLogs.stream()
+                    .filter(log -> !log.getScheduledDateTime().isBefore(hourStart) &&
+                                 log.getScheduledDateTime().isBefore(hourEnd))
+                    .findFirst();
+
+                HabitLog log;
+                if (existingLog.isPresent()) {
+                    log = existingLog.get();
+                    if (log.getCompleted()) {
+                        completedHours++;
+                    } else if (hourEnd.isBefore(now)) {
+                        // Mark as missed if the hour has passed and not completed
+                        log.setMissed(true);
+                        log.setMissedDateTime(hourEnd);
+                        logsToSave.add(log);
+                    }
+                } else if (hourEnd.isBefore(now)) {
+                    // Create and mark as missed if the hour has passed
+                    log = new HabitLog();
+                    log.setHabit(habit);
+                    log.setScheduledDateTime(hourStart);
+                    log.setMissed(true);
+                    log.setMissedDateTime(hourEnd);
+                    logsToSave.add(log);
+                } else if (currentHour.isBefore(now)) {
+                    // For current hour, just create the log
+                    log = new HabitLog();
+                    log.setHabit(habit);
+                    log.setScheduledDateTime(hourStart);
+                    logsToSave.add(log);
+                }
+                
+                currentHour = hourEnd;
+            }
+
+            // Save all logs in a single transaction
+            if (!logsToSave.isEmpty()) {
+                habitLogRepository.saveAll(logsToSave);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error processing hourly habit: " + habit.getId(), e);
+            throw e;
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void processSingleHabit(Habit habit, LocalDateTime now, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         // Get the latest log for today
         Optional<HabitLog> existingLog = habitLogRepository
             .findTopByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeDesc(

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/habits")
@@ -22,9 +23,10 @@ public class HabitApiController {
                                                      @RequestParam int size) {
         return habitService.getHabit(id)
                 .map(habit -> {
-                    List<HabitLogDto> dto = habitService.getLogsPage(habit, page, size)
+                    List<HabitLog> logs = habitService.getLogsPage(habit, page, size);
+                    List<HabitLogDto> dto = logs.stream()
                             .map(l -> new HabitLogDto(l.getId(), l.getScheduledDateTime(), l.isCompleted()))
-                            .getContent();
+                            .collect(Collectors.toList());
                     return ResponseEntity.ok(dto);
                 })
                 .orElse(ResponseEntity.notFound().build());

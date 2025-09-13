@@ -22,12 +22,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class HabitService {
     private static final Logger logger = LoggerFactory.getLogger(HabitService.class);
 
     private final HabitRepository habitRepo;
     private final HabitLogRepository logRepo;
+    private final HabitLogService habitLogService;
+    private final HabitProcessingService habitProcessingService;
     private final TelegramService telegramService;
     private final SleepWindow sleepWindow;
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a");
@@ -35,11 +36,15 @@ public class HabitService {
 
     @Autowired
     public HabitService(HabitRepository habitRepo,
-                        HabitLogRepository logRepo,
-                        TelegramService telegramService,
-                        SleepWindow sleepWindow) {
+                       HabitLogRepository logRepo,
+                       HabitLogService habitLogService,
+                       HabitProcessingService habitProcessingService,
+                       TelegramService telegramService,
+                       SleepWindow sleepWindow) {
         this.habitRepo = habitRepo;
         this.logRepo = logRepo;
+        this.habitLogService = habitLogService;
+        this.habitProcessingService = habitProcessingService;
         this.telegramService = telegramService;
         this.sleepWindow = sleepWindow;
     }
@@ -48,6 +53,7 @@ public class HabitService {
      * Updates the streak counter for a habit based on completion dates
      * @param habit The habit to update streaks for
      */
+    @Transactional
     public void updateHabitStreaks(Habit habit) {
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
@@ -64,6 +70,7 @@ public class HabitService {
     }
 
     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public List<Habit> getAllHabits() {
         try {
             return habitRepo.findByArchivedFalse();
@@ -73,6 +80,7 @@ public class HabitService {
         }
     }
 
+    @Transactional(readOnly = true)
     @Transactional(readOnly = true)
     public List<Habit> getArchivedHabits() {
         try {
@@ -89,6 +97,7 @@ public class HabitService {
      * @return Map containing various habit statistics
      */
     @Transactional(readOnly = true, timeout = 30)
+    @Transactional(readOnly = true)
     public Map<String, Object> getHabitStats() {
         Map<String, Object> stats = new HashMap<>();
         List<Habit> habits = Collections.emptyList();
@@ -176,10 +185,12 @@ public class HabitService {
     }
 
     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public Optional<Habit> getHabitById(Long id) {
         return habitRepo.findById(id);
     }
 
+    @Transactional
     @Transactional
     public Habit createHabit(Habit habit) {
         if (habit == null) {
@@ -371,6 +382,7 @@ public class HabitService {
      * Generates logs for a habit based on its recurrence pattern
      * Handles all recurrence types with support for grace periods and missed habit tracking
      */
+    @Transactional
     public void generateTodayLogsForHabit(Habit habit) {
         LocalDateTime now = LocalDateTime.now();
         ZoneId zoneId = ZoneId.of(habit.getTimeZone());
@@ -398,7 +410,8 @@ public class HabitService {
     /**
      * Generates logs for multiple daily occurrences of a habit
      */
-    private void generateMultipleDailyLogs(Habit habit, ZonedDateTime zonedNow) {
+    @Transactional
+    public void generateMultipleDailyLogs(Habit habit, ZonedDateTime zonedNow) {
         ZoneId zoneId = ZoneId.of(habit.getTimeZone());
         LocalDate today = zonedNow.toLocalDate();
 
@@ -424,7 +437,8 @@ public class HabitService {
     /**
      * Calculates the next scheduled time for a habit based on its recurrence pattern
      */
-    private LocalDateTime calculateNextScheduledTime(Habit habit, ZonedDateTime zonedNow) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextScheduledTime(Habit habit, ZonedDateTime zonedNow) {
         LocalTime scheduledTime = habit.getScheduledTime();
         LocalDateTime now = zonedNow.toLocalDateTime();
         LocalDateTime nextScheduledTime = null;
@@ -454,7 +468,8 @@ public class HabitService {
         return nextScheduledTime;
     }
 
-    private LocalDateTime calculateNextHourlyTime(Habit habit, LocalDateTime now) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextHourlyTime(Habit habit, LocalDateTime now) {
         LocalDateTime nextTime = now.truncatedTo(ChronoUnit.HOURS)
                 .plusHours(1)
                 .withMinute(habit.getScheduledTime().getMinute())
@@ -469,7 +484,8 @@ public class HabitService {
         return nextTime;
     }
 
-    private LocalDateTime calculateNextDailyTime(Habit habit, LocalDateTime now) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextDailyTime(Habit habit, LocalDateTime now) {
         LocalDateTime nextTime = now.toLocalDate().atTime(habit.getScheduledTime());
 
         // If the scheduled time has passed today, move to tomorrow
@@ -487,7 +503,8 @@ public class HabitService {
         return nextTime;
     }
 
-    private LocalDateTime calculateNextWeeklyTime(Habit habit, LocalDateTime now) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextWeeklyTime(Habit habit, LocalDateTime now) {
         DayOfWeek targetDay = habit.getWeeklyDay() != null ?
                 habit.getWeeklyDay() : now.getDayOfWeek();
 
@@ -502,7 +519,8 @@ public class HabitService {
         return nextTime;
     }
 
-    private LocalDateTime calculateNextMonthlyTime(Habit habit, LocalDateTime now) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextMonthlyTime(Habit habit, LocalDateTime now) {
         int dayOfMonth = habit.getMonthlyDay() != null ?
                 Math.min(habit.getMonthlyDay(), YearMonth.from(now).lengthOfMonth()) : 1;
 
@@ -526,7 +544,8 @@ public class HabitService {
         return nextTime;
     }
 
-    private LocalDateTime calculateNextYearlyTime(Habit habit, LocalDateTime now) {
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateNextYearlyTime(Habit habit, LocalDateTime now) {
         int month = habit.getYearlyMonth() != null ? habit.getYearlyMonth() : 1;
         int day = habit.getYearlyDay() != null ? habit.getYearlyDay() : 1;
 
@@ -551,6 +570,7 @@ public class HabitService {
     /**
      * Checks if a log exists for the given habit and scheduled time
      */
+    @Transactional(readOnly = true)
     public boolean isLogExistsForTime(Habit habit, LocalDateTime scheduledTime) {
         return logRepo.existsByHabitAndScheduledDateTime(habit, scheduledTime);
     }
@@ -562,7 +582,8 @@ public class HabitService {
      * @param gracePeriodMinutes The grace period in minutes (can be null to use default)
      * @return true if within grace period, false otherwise
      */
-    private boolean isWithinGracePeriod(LocalDateTime scheduledTime, LocalDateTime currentTime, Integer gracePeriodMinutes) {
+    @Transactional(readOnly = true)
+    public boolean isWithinGracePeriod(LocalDateTime scheduledTime, LocalDateTime currentTime, Integer gracePeriodMinutes) {
         if (scheduledTime == null || currentTime == null) {
             return false;
         }
@@ -573,22 +594,24 @@ public class HabitService {
     /**
      * Creates a new habit log if one doesn't already exist for the given time
      */
-    public void createHabitLogIfNotExists(Habit habit, LocalDateTime scheduledTime, ZoneId zoneId) {
+    @Transactional
+    public HabitLog createHabitLogIfNotExists(Habit habit, LocalDateTime scheduledTime, ZoneId zoneId) {
         if (!isLogExistsForTime(habit, scheduledTime)) {
             HabitLog log = new HabitLog();
             log.setHabit(habit);
             log.setScheduledDateTime(scheduledTime);
             log.setCompleted(false);
-            log.setMissed(false);
             log.setCreatedAt(LocalDateTime.now(zoneId));
             log.setUpdatedAt(LocalDateTime.now(zoneId));
             logRepo.save(log);
         }
+        return logRepo.findByHabitAndScheduledDateTime(habit, scheduledTime).orElse(null);
     }
 
     /**
      * Checks for and marks any missed habits
      */
+    @Transactional
     public void checkAndMarkMissedHabits(Habit habit, ZonedDateTime zonedNow) {
         LocalDateTime now = zonedNow.toLocalDateTime();
         LocalDateTime lastCheckTime = habit.getLastScheduled() != null ?
@@ -621,6 +644,7 @@ public class HabitService {
     /**
      * Marks a specific habit occurrence as missed
      */
+    @Transactional
     public void markHabitAsMissed(Habit habit, LocalDateTime scheduledTime) {
         HabitLog log = logRepo.findByHabitAndScheduledDateTime(habit, scheduledTime)
                 .orElseGet(() -> {
@@ -646,13 +670,15 @@ public class HabitService {
     /**
      * Checks if a time is within sleep hours
      */
-    private boolean isWithinSleepHours(LocalTime time) {
+    @Transactional(readOnly = true)
+    public boolean isWithinSleepHours(LocalTime time) {
         return SleepWindow.isAsleep(time, sleepWindow.getSleepStart(), sleepWindow.getSleepEnd());
     }
 
     /**
      * Get a habit by ID (alias for getHabitById for backward compatibility)
      */
+    @Transactional(readOnly = true)
     public Optional<Habit> getHabit(Long id) {
         return getHabitById(id);
     }
@@ -660,6 +686,7 @@ public class HabitService {
     /**
      * Get today's active habits (alias for getTodaysHabits for backward compatibility)
      */
+    @Transactional(readOnly = true)
     public List<Habit> getTodayHabits() {
         return getTodaysHabits();
     }
@@ -667,6 +694,7 @@ public class HabitService {
     /**
      * Check if a habit was completed today
      */
+    @Transactional(readOnly = true)
     public boolean isCompletedToday(Habit habit) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
@@ -678,6 +706,7 @@ public class HabitService {
     /**
      * Get upcoming logs for a habit
      */
+    @Transactional(readOnly = true)
     public List<HabitLog> getUpcomingLogs(Habit habit) {
         LocalDateTime now = LocalDateTime.now();
         List<HabitLog> upcomingLogs = new ArrayList<>();
@@ -752,17 +781,23 @@ public class HabitService {
     /**
      * Process hourly habits - shows progress for the current day
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markLogsAsProcessedInNewTransaction(List<Long> logIds) {
+        logRepo.markLogsAsProcessed(logIds);
+    }
+    
+    /**
+     * Process hourly habits - shows progress for the current day
+     * This method is now a wrapper that delegates to HabitProcessingService
+     */
     private void processHourlyHabit(Habit habit, LocalDateTime startOfDay, LocalDateTime now, 
                                  LocalDateTime endOfDay, List<Habit> result, List<Long> processedLogIds) {
-        try {
-            // Get existing logs for today
-            List<HabitLog> existingLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-                habit, startOfDay, endOfDay);
-            
-            List<HabitLog> todaysLogs = new ArrayList<>();
-            LocalDateTime currentHour = startOfDay;
-            int totalHours = 0;
-            int completedHours = 0;
+        // Delegate to HabitProcessingService for hourly habit processing
+        habitProcessingService.processHourlyHabit(habit, now, startOfDay, endOfDay);
+        
+        // Add the habit to the result list
+        result.add(habit);
+    }
 
             // Process each hour of the day
             while (currentHour.isBefore(endOfDay)) {
@@ -785,8 +820,7 @@ public class HabitService {
                         // Mark as missed if the hour has passed and not completed
                         log.setMissed(true);
                         log.setMissedDateTime(hourEnd);
-                        log = logRepo.save(log);
-                        processedLogIds.add(log.getId());
+                        logsToSave.add(log);
                     }
                 } else if (hourEnd.isBefore(now)) {
                     // Create and mark as missed if the hour has passed
@@ -795,15 +829,13 @@ public class HabitService {
                     log.setScheduledDateTime(hourStart);
                     log.setMissed(true);
                     log.setMissedDateTime(hourEnd);
-                    log = logRepo.save(log);
-                    processedLogIds.add(log.getId());
+                    logsToSave.add(log);
                 } else if (currentHour.isBefore(now)) {
-                    // For current hour, just save the log
+                    // For current hour, create the log
                     log = new HabitLog();
                     log.setHabit(habit);
                     log.setScheduledDateTime(hourStart);
-                    log = logRepo.save(log);
-                    processedLogIds.add(log.getId());
+                    logsToSave.add(log);
                     todaysLogs.add(log);
                     currentHour = hourEnd;
                     continue;
@@ -821,6 +853,17 @@ public class HabitService {
                 currentHour = hourEnd;
             }
 
+            // Save all logs in a single transaction
+            if (!logsToSave.isEmpty()) {
+                try {
+                    List<HabitLog> savedLogs = logRepo.saveAll(logsToSave);
+                    // Add the IDs of the saved logs to processedLogIds
+                    savedLogs.forEach(savedLog -> processedLogIds.add(savedLog.getId()));
+                } catch (Exception e) {
+                    logger.error("Error saving logs in batch", e);
+                }
+            }
+
             // Set progress information
             if (totalHours > 0) {
                 double progress = (double) completedHours / totalHours * 100;
@@ -829,7 +872,8 @@ public class HabitService {
                 habit.setCompletedOccurrences(completedHours);
 
                 // Only add to result if there are uncompleted logs
-                if (completedHours < totalHours) {
+                boolean hasUncompletedLogs = todaysLogs.stream().anyMatch(log -> !log.getCompleted());
+                if (hasUncompletedLogs) {
                     habit.getLogs().clear();
                     habit.getLogs().addAll(todaysLogs);
                     result.add(habit);
@@ -841,39 +885,68 @@ public class HabitService {
     }
 
     /**
-     * Process daily habits - shows progress for the current day
+     * Process weekly habit - shows progress for the current week
      */
-    private void processDailyHabit(Habit habit, LocalDateTime now, LocalDateTime startOfDay,
-                                LocalDateTime endOfDay, List<Habit> result, List<Long> processedLogIds) {
+    private void processWeeklyHabit(Habit habit, LocalDateTime now, LocalDate today,
+                                 List<Habit> result, List<Long> processedLogIds) {
         try {
-            // Get existing logs for today
-            List<HabitLog> todaysLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-                habit, startOfDay, endOfDay);
-
-            HabitLog log;
-            if (todaysLogs.isEmpty()) {
-                // Create a new log for today if none exists
-                log = new HabitLog();
-                log.setHabit(habit);
-                log.setScheduledDateTime(now);
-                log.setCompleted(false);
-                log = logRepo.save(log);
-                processedLogIds.add(log.getId());
-            } else {
-                // Use the existing log
-                log = todaysLogs.get(0);
-                if (log.getCompleted()) {
-                    // If already completed, no need to process further
+            LocalDate startOfWeek = today.with(DayOfWeek.MONDAY);
+            LocalDate endOfWeek = startOfWeek.plusDays(6);
+            
+            // Check if we should include this habit today
+            if (today.getDayOfWeek() != habit.getWeeklyDay()) {
+                return;
+            }
+            
+            // Check if there's already a log for this week
+            LocalDateTime scheduledTime = today.atTime(habit.getScheduledTime());
+            
+            // Check if we already processed this log
+            if (processedLogIds != null) {
+                boolean alreadyProcessed = logRepo.existsByHabitAndScheduledDateTimeBetween(
+                    habit, scheduledTime.withHour(0), scheduledTime.withHour(23).withMinute(59));
+                if (alreadyProcessed) {
                     return;
-                } else if (endOfDay.isBefore(now)) {
-                    // Mark as missed if the day has passed and not completed
-                    log.setMissed(true);
-                    log.setMissedDateTime(endOfDay);
-                    log = logRepo.save(log);
-                    processedLogIds.add(log.getId());
                 }
             }
-
+            
+            // Create or update the log
+            HabitLog log = new HabitLog();
+            log.setHabit(habit);
+            log.setScheduledDateTime(scheduledTime);
+            log.setCompleted(false);
+            
+            // Save the log
+            HabitLog savedLog = habitLogService.saveLog(log);
+            if (processedLogIds != null) {
+                processedLogIds.add(savedLog.getId());
+            }
+            
+            // Set progress information
+            habit.setProgress(0); // Start with 0% progress for the week
+            habit.setTotalOccurrences(1);
+            habit.setCompletedOccurrences(0);
+            
+            // Add to result if not completed
+            if (!log.getCompleted()) {
+                habit.getLogs().clear();
+                habit.getLogs().add(log);
+                result.add(habit);
+            }
+        } catch (Exception e) {
+            logger.error("Error processing weekly habit: " + habit.getId(), e);
+        }
+    }
+            } else {
+                // Use the existing log
+                HabitLog existingLog = existingLogs.stream()
+                        .filter(log -> log.getScheduledDateTime().equals(scheduledTime))
+                        .findFirst()
+                        .orElse(null);
+                if (existingLog != null) {
+                    upcomingLogs.add(existingLog);
+                }
+            }
             // Set progress information
             habit.setProgress(log.getCompleted() ? 100 : 0);
             habit.setTotalOccurrences(1);
@@ -890,245 +963,234 @@ public class HabitService {
         }
     }
 
-    @Transactional(readOnly = true, timeout = 30)
+    @Transactional(readOnly = true)
     public List<Habit> getTodaysHabits() {
+        // Process all habits first to ensure logs are created
+        habitProcessingService.processHabitsForToday();
+        
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = now.toLocalDate();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1);
 
-        List<Habit> habits = Collections.emptyList();
-        try {
-            // Use a new transaction for fetching habits
-            habits = habitRepo.findByArchivedFalse();
-            if (habits.isEmpty()) {
-                return Collections.emptyList();
-            }
-            
-            List<Habit> result = new ArrayList<>(habits.size());
-            List<Long> processedLogIds = new ArrayList<>();
-            
-            for (Habit habit : habits) {
-                try {
-                    // Process each habit based on its recurrence type
-                    switch (habit.getRecurrence()) {
-                        case DAILY:
-                            processDailyHabit(habit, now, startOfDay, endOfDay, result, processedLogIds);
-                            break;
-                        case WEEKLY:
-                            if (today.getDayOfWeek() == habit.getWeeklyDay()) {
-                                processWeeklyHabit(habit, now, today, result, processedLogIds);
-                            }
-                            break;
-                        case MONTHLY:
-                            if (today.getDayOfMonth() == habit.getMonthlyDay()) {
-                                processMonthlyHabit(habit, now, today, result, processedLogIds);
-                            }
-                            break;
-                        case YEARLY:
-                            if (today.getDayOfMonth() == habit.getYearlyDay() &&
-                                    today.getMonthValue() == habit.getYearlyMonth()) {
-                                processYearlyHabit(habit, now, today, result, processedLogIds);
-                            }
-                            break;
-                        case HOURLY:
-                            processHourlyHabit(habit, startOfDay, now, endOfDay, result, processedLogIds);
-                            break;
-                    }
-                } catch (Exception e) {
-                    logger.error("Error processing habit: " + habit.getId(), e);
-                    // Continue with next habit even if one fails
-                }
-            }
-            
-            // Mark logs as processed in a single transaction
-            if (!processedLogIds.isEmpty()) {
-                try {
-                    logRepo.markLogsAsProcessed(processedLogIds);
-                } catch (Exception e) {
-                    logger.error("Error marking logs as processed", e);
-                }
-            }
-            
-            return result;
-            
-        } catch (Exception e) {
-            logger.error("Error in getTodaysHabits", e);
+        List<Habit> habits = habitRepo.findByArchivedFalse();
+        if (habits.isEmpty()) {
             return Collections.emptyList();
         }
+        
+        List<Habit> result = new ArrayList<>();
+        
+        for (Habit habit : habits) {
+            try {
+                if (shouldIncludeHabitToday(habit, today)) {
+                    // For hourly habits, we already processed the logs in processHabitsForToday()
+                    if (habit.getRecurrence() != Habit.Recurrence.HOURLY) {
+                        processSingleHabit(habit, now, startOfDay, endOfDay, result);
+                    } else {
+                        // For hourly habits, just add them to the result
+                        result.add(habit);
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error processing habit: " + habit.getId(), e);
+            }
+        }
+        
+        return result;
     }
-
-
-    /**
-     * Process weekly habits - shows progress for the current month
-     */
-    private void processWeeklyHabit(Habit habit, LocalDateTime now, LocalDate today, 
-                                 List<Habit> result, List<Long> processedLogIds) {
-        // Create a log for this week if it's the scheduled day
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
-
-        // Get existing log for this week
-        List<HabitLog> thisWeeksLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-            habit, startOfDay, endOfDay);
-
-        HabitLog log;
-        if (thisWeeksLogs.isEmpty()) {
-            // Create a new log for this week if it doesn't exist
-            log = new HabitLog();
-            log.setHabit(habit);
-            log.setScheduledDateTime(startOfDay);
-            log.setCompleted(false);
-            log = logRepo.save(log);
-        } else {
-            log = thisWeeksLogs.get(0);
-            // If already completed, don't add to result
-            if (log.getCompleted()) {
+    
+    private boolean shouldIncludeHabitToday(Habit habit, LocalDate today) {
+        switch (habit.getRecurrence()) {
+            case DAILY:
+                return true;
+            case WEEKLY:
+                return today.getDayOfWeek() == habit.getWeeklyDay();
+            case MONTHLY:
+                return today.getDayOfMonth() == habit.getMonthlyDay();
+            case YEARLY:
+                return today.getDayOfMonth() == habit.getYearlyDay() && 
+                       today.getMonthValue() == habit.getYearlyMonth();
+            case HOURLY:
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    private void processSingleHabit(Habit habit, LocalDateTime now, 
+                                  LocalDateTime startOfDay, LocalDateTime endOfDay,
+                                  List<Habit> result) {
+        // Get the latest log for today
+        Optional<HabitLog> existingLog = logRepo
+            .findTopByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeDesc(
+                habit, startOfDay, endOfDay);
+                
+        if (existingLog.isEmpty()) {
+            // Create a new log if none exists for today
+            HabitLog newLog = new HabitLog();
+            newLog.setHabit(habit);
+            newLog.setScheduledDateTime(now);
+            habitLogService.saveLog(newLog);
+            
+            // Add to result if not completed
+            if (!newLog.getCompleted()) {
+                habit.getLogs().clear();
+                habit.getLogs().add(newLog);
+                result.add(habit);
+            }
+        } else if (!existingLog.get().getCompleted()) {
+            // Add to result if not completed
+ * Process monthly habit - shows progress for the current month
+ */
+private void processMonthlyHabit(Habit habit, LocalDateTime now, LocalDate today,
+                              List<Habit> result, List<Long> processedLogIds) {
+    try {
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        LocalDate endOfMonth = startOfMonth.plusMonths(1);
+        
+        // Check if we should include this habit today
+        if (today.getDayOfMonth() != habit.getMonthlyDay()) {
+            return;
+        }
+        
+        // Check if there's already a log for this month
+        LocalDateTime scheduledTime = today.atTime(habit.getScheduledTime());
+        
+        // Check if we already processed this log
+        if (processedLogIds != null) {
+            boolean alreadyProcessed = logRepo.existsByHabitAndScheduledDateTimeBetween(
+                habit, scheduledTime.withDayOfMonth(1), scheduledTime.withDayOfMonth(today.lengthOfMonth()));
+            if (alreadyProcessed) {
                 return;
             }
         }
-
-        // Calculate monthly progress
-        LocalDate monthStart = today.withDayOfMonth(1);
-        LocalDate nextMonth = monthStart.plusMonths(1);
-
-        // Count how many times this day of week occurs in the month
-        int totalWeeksInMonth = 0;
-        LocalDate date = monthStart;
-        while (date.isBefore(nextMonth)) {
-            if (date.getDayOfWeek() == today.getDayOfWeek()) {
-                totalWeeksInMonth++;
-            }
-            date = date.plusDays(1);
+        
+        // Create or update the log
+        HabitLog log = new HabitLog();
+        log.setHabit(habit);
+        log.setScheduledDateTime(scheduledTime);
+        log.setCompleted(false);
+        
+        // Save the log
+        HabitLog savedLog = habitLogService.saveLog(log);
+        if (processedLogIds != null) {
+            processedLogIds.add(savedLog.getId());
         }
-
-        // Get all logs for this month
+        
+        // Calculate progress for the month
         List<HabitLog> monthlyLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-            habit, monthStart.atStartOfDay(), nextMonth.atStartOfDay());
-
-        // Count completed weeks this month
-        long completedWeeks = monthlyLogs.stream()
+            habit, startOfMonth.atStartOfDay(), endOfMonth.atStartOfDay());
+        
+        long completedDays = monthlyLogs.stream()
             .filter(HabitLog::getCompleted)
             .count();
-
-        // Calculate progress percentage
-        double progress = totalWeeksInMonth > 0 ? (double) completedWeeks / totalWeeksInMonth * 100 : 0;
-
+        
+        int totalDaysInMonth = today.lengthOfMonth();
+        double progress = (double) completedDays / totalDaysInMonth * 100;
+        
         // Set progress information
         habit.setProgress(progress);
-        habit.setTotalOccurrences(totalWeeksInMonth);
-        habit.setCompletedOccurrences((int) completedWeeks);
-
-        // Add to result if not completed this week
+        habit.setTotalOccurrences(totalDaysInMonth);
+        habit.setCompletedOccurrences((int) completedDays);
+        
+        // Add to result if not completed
         if (!log.getCompleted()) {
             habit.getLogs().clear();
             habit.getLogs().add(log);
             result.add(habit);
         }
+    } catch (Exception e) {
+        logger.error("Error processing monthly habit: " + habit.getId(), e);
     }
+    /**
+     * Process yearly habit - shows progress for the current year
+     */
+    private void processYearlyHabit(Habit habit, LocalDateTime now, LocalDate today,
+                                 List<Habit> result, List<Long> processedLogIds) {
+        try {
+            LocalDate yearStart = today.withDayOfYear(1);
+            LocalDate nextYear = yearStart.plusYears(1);
+            
+            // Check if we should include this habit today
+            if (today.getDayOfMonth() != habit.getYearlyDay() || 
+                today.getMonthValue() != habit.getYearlyMonth()) {
+                return;
+            }
+            
+            // Check if there's already a log for this year
+            LocalDateTime scheduledTime = today.atTime(habit.getScheduledTime());
+            
+            // Check if we already processed this log
+            if (processedLogIds != null) {
+                boolean alreadyProcessed = logRepo.existsByHabitAndScheduledDateTimeBetween(
+                    habit, scheduledTime.withDayOfYear(1), scheduledTime.withDayOfYear(365));
+                if (alreadyProcessed) {
+                    return;
+                }
+            }
+            
+            // Create or update the log
+            HabitLog log = new HabitLog();
+            log.setHabit(habit);
+            log.setScheduledDateTime(scheduledTime);
+            log.setCompleted(false);
+            
+            // Save the log
+            HabitLog savedLog = habitLogService.saveLog(log);
+            if (processedLogIds != null) {
+                processedLogIds.add(savedLog.getId());
+            }
+            
+            // Calculate progress for the year
+            List<HabitLog> yearlyLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                habit, yearStart.atStartOfDay(), nextYear.atStartOfDay());
+            
+            long completedYears = yearlyLogs.stream()
+                .filter(HabitLog::getCompleted)
+                .count();
+            
+            // For yearly habits, we just track completion (0% or 100%)
+            double progress = log.getCompleted() ? 100 : 0;
+            
+            // Set progress information
+            habit.setProgress(progress);
+            habit.setTotalOccurrences(1);
+            habit.setCompletedOccurrences(log.getCompleted() ? 1 : 0);
+            
+            // Add to result if not completed
+            if (!log.getCompleted()) {
+                habit.getLogs().clear();
+                habit.getLogs().add(log);
+                result.add(habit);
+            }
+        } catch (Exception e) {
+            logger.error("Error processing yearly habit: " + habit.getId(), e);
+        }
 
     /**
-     * Process yearly habits - shows completion status for the current year
+     * Helper method to determine if a habit should be included today based on its recurrence
      */
-    private void processYearlyHabit(Habit habit, LocalDateTime now, LocalDate today, 
-                               List<Habit> result, List<Long> processedLogIds) {
-        // Create a log for this year if it's the scheduled day
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
-
-        // Get existing log for this year
-        List<HabitLog> thisYearsLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-            habit, startOfDay, endOfDay);
-
-        HabitLog log;
-        if (thisYearsLogs.isEmpty()) {
-            // Create a new log for this year if it doesn't exist
-            log = new HabitLog();
-            log.setHabit(habit);
-            log.setScheduledDateTime(startOfDay);
-            log.setCompleted(false);
-            log = logRepo.save(log);
-        } else {
-            log = thisYearsLogs.get(0);
-            // If already completed, don't add to result
-            if (log.getCompleted()) {
-                return;
-            }
+    private boolean shouldIncludeHabitToday(Habit habit, LocalDate today) {
+        if (habit == null || habit.getRecurrence() == null) {
+            return false;
         }
-
-        // For yearly habits, progress is either 0% or 100%
-        double progress = log.getCompleted() ? 100.0 : 0.0;
-
-        // Set progress information
-        habit.setProgress(progress);
-        habit.setTotalOccurrences(1);
-        habit.setCompletedOccurrences(log.getCompleted() ? 1 : 0);
-
-        // Add to result if not completed this year
-        if (!log.getCompleted()) {
-            habit.getLogs().clear();
-            habit.getLogs().add(log);
-            result.add(habit);
+        
+        switch (habit.getRecurrence()) {
+            case DAILY:
+                return true;
+            case WEEKLY:
+                return today.getDayOfWeek() == habit.getWeeklyDay();
+            case MONTHLY:
+                return today.getDayOfMonth() == habit.getMonthlyDay();
+            case YEARLY:
+                return today.getDayOfMonth() == habit.getYearlyDay() && 
+                       today.getMonthValue() == habit.getYearlyMonth();
+            case HOURLY:
+                return true;
+            default:
+                return false;
         }
     }
-
-    private void processMonthlyHabit(Habit habit, LocalDateTime now, LocalDate today, 
-                                List<Habit> result, List<Long> processedLogIds) {
-        // Create a log for this month if it's the scheduled day
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
-
-        // Get existing log for this month
-        List<HabitLog> thisMonthsLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-            habit, startOfDay, endOfDay);
-
-        HabitLog log;
-        if (thisMonthsLogs.isEmpty()) {
-            // Create a new log for this month if it doesn't exist
-            log = new HabitLog();
-            log.setHabit(habit);
-            log.setScheduledDateTime(startOfDay);
-            log.setCompleted(false);
-            log = logRepo.save(log);
-        } else {
-            log = thisMonthsLogs.get(0);
-            // If already completed, don't add to result
-            if (log.getCompleted()) {
-                return;
-            }
-        }
-
-        // Calculate yearly progress
-        LocalDate yearStart = today.withDayOfYear(1);
-        LocalDate nextYear = yearStart.plusYears(1);
-
-        // Count how many months have passed this year
-        int totalMonthsInYear = 12;
-        int monthsPassed = today.getMonthValue();
-
-        // Get all logs for this year
-        List<HabitLog> yearlyLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-            habit, yearStart.atStartOfDay(), nextYear.atStartOfDay());
-
-        // Count completed months this year
-        long completedMonths = yearlyLogs.stream()
-            .filter(HabitLog::getCompleted)
-            .count();
-
-        // Calculate progress percentage
-        double progress = totalMonthsInYear > 0 ? (double) completedMonths / totalMonthsInYear * 100 : 0;
-
-        // Set progress information
-        habit.setProgress(progress);
-        habit.setTotalOccurrences(totalMonthsInYear);
-        habit.setCompletedOccurrences((int) completedMonths);
-
-        // Add to result if not completed this month
-        if (!log.getCompleted()) {
-            habit.getLogs().clear();
-            habit.getLogs().add(log);
-            result.add(habit);
-        }
     }
 
     /**
