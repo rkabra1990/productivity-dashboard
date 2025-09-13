@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -58,23 +60,50 @@ public class HabitProcessingService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public List<HabitLog> processHourlyHabit(Habit habit, LocalDateTime now, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         List<HabitLog> processedLogs = new ArrayList<>();
         try {
-            // Get existing logs for today
+            // Get current time in IST
+            ZoneId istZone = ZoneId.of("Asia/Kolkata");
+            ZonedDateTime currentIstTime = now.atZone(ZoneId.systemDefault()).withZoneSameInstant(istZone);
+            
+            // Convert start and end of day to IST
+            ZonedDateTime istStartOfDay = startOfDay.atZone(ZoneId.systemDefault()).withZoneSameInstant(istZone);
+            ZonedDateTime istEndOfDay = endOfDay.atZone(ZoneId.systemDefault()).withZoneSameInstant(istZone);
+            
+            // Get existing logs for today in IST
             List<HabitLog> existingLogs = habitLogRepository.findByHabitAndScheduledDateTimeBetween(
-                habit, startOfDay, endOfDay);
+                habit, 
+                istStartOfDay.toLocalDateTime(), 
+                istEndOfDay.toLocalDateTime()
+            );
             
-            LocalDateTime currentHour = startOfDay;
+            // Start from the beginning of the current hour in IST
+            LocalDateTime currentHour = currentIstTime.withMinute(0).withSecond(0).withNano(0).toLocalDateTime();
             
-            // Generate logs for each hour in the day
-            while (currentHour.isBefore(endOfDay)) {
-                final LocalDateTime scheduledTime = currentHour; // effectively final for lambda
+            // Only generate logs for current hour and next 5 hours
+            int hoursToGenerate = 6; // current hour + next 5 hours
+            
+            for (int i = 0; i < hoursToGenerate; i++) {
+                LocalDateTime scheduledTime = currentHour.plusHours(i);
+                
+                // Skip if we've gone past the end of day
+                if (scheduledTime.isAfter(istEndOfDay.toLocalDateTime())) {
+                    break;
+                }
+                
+                // Create a copy of scheduledTime for use in lambda
+                final LocalDateTime finalScheduledTime = scheduledTime;
                 
                 // Find or create log for this hour
                 Optional<HabitLog> existingLog = existingLogs.stream()
-                    .filter(log -> log.getScheduledDateTime().equals(scheduledTime))
+                    .filter(log -> {
+                        // Compare hours in the same timezone
+                        ZonedDateTime logTime = log.getScheduledDateTime().atZone(ZoneId.systemDefault())
+                            .withZoneSameInstant(istZone);
+                        return logTime.toLocalDateTime().equals(finalScheduledTime);
+                    })
                     .findFirst();
 
                 HabitLog log;
@@ -83,16 +112,16 @@ public class HabitProcessingService {
                 } else {
                     log = new HabitLog();
                     log.setHabit(habit);
-                    log.setScheduledDateTime(scheduledTime);
+                    // Convert back to system timezone before saving
+                    ZonedDateTime scheduledInSystemTime = finalScheduledTime.atZone(istZone)
+                        .withZoneSameInstant(ZoneId.systemDefault());
+                    log.setScheduledDateTime(scheduledInSystemTime.toLocalDateTime());
                     log.setCompleted(false);
                     log = habitLogRepository.save(log);
                 }
                 
                 // Add to processed logs
                 processedLogs.add(log);
-                
-                // Move to next hour
-                currentHour = currentHour.plusHours(1);
             }
 
         } catch (Exception e) {
@@ -103,7 +132,7 @@ public class HabitProcessingService {
         return processedLogs; // Return all processed logs
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     protected void processSingleHabit(Habit habit, LocalDateTime now, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         // Get the latest log for today
         Optional<HabitLog> existingLog = habitLogRepository

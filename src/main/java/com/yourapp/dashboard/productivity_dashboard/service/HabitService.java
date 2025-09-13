@@ -887,38 +887,77 @@ public class HabitService {
 
     @Transactional(readOnly = true)
     public List<Habit> getTodaysHabits() {
-        // Process all habits first to ensure logs are created
-        habitProcessingService.processHabitsForToday();
-        
-        LocalDateTime now = LocalDateTime.now();
-        LocalDate today = now.toLocalDate();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        try {
+            // Process all habits first to ensure logs are created
+            habitProcessingService.processHabitsForToday();
+            
+            // Get current time in system timezone
+            LocalDateTime now = LocalDateTime.now();
+            
+            // Set up timezone info
+            ZoneId istZone = ZoneId.of("Asia/Kolkata");
+            ZonedDateTime istNow = now.atZone(ZoneId.systemDefault()).withZoneSameInstant(istZone);
+            
+            // Get start and end of day in IST
+            LocalDateTime istStartOfDay = istNow.toLocalDate().atStartOfDay();
+            LocalDateTime istEndOfDay = istStartOfDay.plusDays(1);
+            
+            // Convert to system timezone for database queries
+            LocalDateTime startOfDay = istStartOfDay.atZone(istZone)
+                .withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+            LocalDateTime endOfDay = istEndOfDay.atZone(istZone)
+                .withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
 
-        List<Habit> habits = habitRepo.findByArchivedFalse();
-        if (habits.isEmpty()) {
+            // Get all active habits
+            List<Habit> habits = habitRepo.findByArchivedFalse();
+            if (habits.isEmpty()) {
+                return Collections.emptyList();
+            }
+            
+            List<Habit> result = new ArrayList<>();
+            
+            for (Habit habit : habits) {
+                try {
+                    if (shouldIncludeHabitToday(habit, istNow.toLocalDate())) {
+                        if (habit.getRecurrence() == Recurrence.HOURLY) {
+                            // For hourly habits, load all logs for today
+                            List<HabitLog> allLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                                habit, startOfDay, endOfDay);
+                            
+                            // Filter and process logs
+                            List<HabitLog> hourlyLogs = allLogs.stream()
+                                .filter(log -> {
+                                    // Convert log time to IST for filtering
+                                    ZonedDateTime logTime = log.getScheduledDateTime()
+                                        .atZone(ZoneId.systemDefault())
+                                        .withZoneSameInstant(istZone);
+                                    
+                                    // Only include logs from current hour onwards
+                                    return !logTime.toLocalDateTime().isBefore(istNow.toLocalDateTime().withMinute(0).withSecond(0));
+                                })
+                                .sorted(Comparator.comparing(HabitLog::getScheduledDateTime))
+                                .limit(6) // Show current hour + next 5 hours
+                                .collect(Collectors.toList());
+                            
+                            // Set the processed logs
+                            habit.getLogs().clear();
+                            habit.getLogs().addAll(hourlyLogs);
+                            result.add(habit);
+                        } else {
+                            // For non-hourly habits, process as before
+                            processSingleHabit(habit, now, startOfDay, endOfDay, result);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("Error processing habit: " + (habit != null ? habit.getId() : "unknown"), e);
+                }
+            }
+            
+            return result;
+        } catch (Exception e) {
+            logger.error("Error in getTodaysHabits", e);
             return Collections.emptyList();
         }
-        
-        List<Habit> result = new ArrayList<>();
-        
-        for (Habit habit : habits) {
-            try {
-                if (shouldIncludeHabitToday(habit, today)) {
-                    // For hourly habits, we already processed the logs in processHabitsForToday()
-                    if (habit.getRecurrence() != Recurrence.HOURLY) {
-                        processSingleHabit(habit, now, startOfDay, endOfDay, result);
-                    } else {
-                        // For hourly habits, just add them to the result
-                        result.add(habit);
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Error processing habit: " + habit.getId(), e);
-            }
-        }
-        
-        return result;
     }
 
     /**

@@ -350,7 +350,9 @@
             border-color: var(--primary-color);
             box-shadow: 0 0 0 0.25rem rgba(74, 107, 175, 0.25);
         }
+        }
     </style>
+    </th:block>
 </head>
 <body>
     <!-- Toast Container -->
@@ -518,20 +520,33 @@
                         
                         <!-- Hourly Logs -->
                         <div th:if="${habit.recurrence == 'HOURLY' && !#lists.isEmpty(habit.logs)}" class="hourly-logs mb-2">
-                            <div th:each="log : ${habit.logs}" class="hourly-log d-flex justify-content-between align-items-center mb-1 p-1 rounded"
-                                 th:classappend="${log.completed} ? 'bg-light' : (log.scheduledDateTime.isBefore(T(java.time.LocalDateTime).now()) ? 'bg-light bg-opacity-50' : '')">
-                                <span class="time" th:text="${#temporals.format(log.scheduledDateTime, 'h:mm a')}"></span>
-                                <span th:if="${log.completed}" class="badge bg-success">
-                                    <i class="bi bi-check-circle"></i> Done
-                                </span>
-                                <span th:if="!log.completed && log.scheduledDateTime.isBefore(T(java.time.LocalDateTime).now())" 
-                                      class="badge bg-danger">
-                                    <i class="bi bi-exclamation-triangle"></i> Missed
-                                </span>
-                                <span th:if="!log.completed && log.scheduledDateTime.isAfter(T(java.time.LocalDateTime).now())" 
-                                      class="badge bg-primary">
-                                    <i class="bi bi-clock"></i> Upcoming
-                                </span>
+                            <div th:with="istZone=T(java.time.ZoneId).of('Asia/Kolkata'),
+                                        nowInSystemTime=${T(java.time.LocalDateTime).now()},
+                                        nowInIST=${T(java.time.ZonedDateTime).now(istZone)},
+                                        currentHourInIST=${nowInIST.withMinute(0).withSecond(0).withNano(0).toLocalDateTime()},
+                                        endHourInIST=${nowInIST.plusHours(6).withMinute(0).withSecond(0).withNano(0).toLocalDateTime()}">
+                                
+                                <div th:each="log : ${habit.logs}" 
+                                     th:with="logTimeInSystemTime=${log.scheduledDateTime},
+                                             logTimeInIST=${log.scheduledDateTime.atZone(T(java.time.ZoneId).systemDefault()).withZoneSameInstant(istZone).toLocalDateTime()}"
+                                     th:if="${logTimeInIST.isAfter(nowInIST.minusMinutes(1)) && logTimeInIST.isBefore(endHourInIST.plusHours(1))}"
+                                     class="hourly-log d-flex justify-content-between align-items-center mb-1 p-1 rounded"
+                                     th:classappend="${log.completed} ? 'bg-light' : (logTimeInSystemTime.isBefore(nowInSystemTime) ? 'bg-light bg-opacity-50' : '')">
+                                    
+                                    <span class="time" th:text="${#temporals.format(logTimeInIST, 'h:mm a')}"></span>
+                                    
+                                    <span th:if="${log.completed}" class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Done
+                                    </span>
+                                    <span th:if="!log.completed && logTimeInSystemTime.isBefore(nowInSystemTime)" 
+                                          class="badge bg-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Missed
+                                    </span>
+                                    <span th:if="!log.completed && !logTimeInSystemTime.isBefore(nowInSystemTime)" 
+                                          class="badge bg-primary">
+                                        <i class="bi bi-clock"></i> Upcoming
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         
