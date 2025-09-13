@@ -12,7 +12,6 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -219,31 +218,60 @@ public class TaskService {
     }
 
     public void exportTasksForYearToExcel(int year, ServletOutputStream outputStream) throws IOException {
-        List<Task> tasks = repo.findAll().stream()
-                .filter(t -> t.getDueDate() != null && t.getDueDate().getYear() == year)
-                .toList();
+        try (HSSFWorkbook workbook = new HSSFWorkbook()) {
+            HSSFSheet sheet = workbook.createSheet("Tasks " + year);
 
-        HSSFWorkbook workbook = new HSSFWorkbook();
-        HSSFSheet sheet = workbook.createSheet("Tasks " + year);
+            // Create header row
+            HSSFRow header = sheet.createRow(0);
+            String[] headers = {"Title", "Category", "Priority", "Due Date", "Completed", "Completion Date"};
+            for (int i = 0; i < headers.length; i++) {
+                header.createCell(i).setCellValue(headers[i]);
+            }
 
-        HSSFRow header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Title");
-        header.createCell(1).setCellValue("Category");
-        header.createCell(2).setCellValue("Priority");
-        header.createCell(3).setCellValue("Due Date");
-        header.createCell(4).setCellValue("Completed");
-
-        int rowNum = 1;
-        for (Task task : tasks) {
-            HSSFRow row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(task.getTitle());
-            row.createCell(1).setCellValue(task.getCategory());
-            row.createCell(2).setCellValue(task.getPriority().toString());
-            row.createCell(3).setCellValue(task.getDueDate().toString());
-            row.createCell(4).setCellValue(task.isCompleted() ? "Yes" : "No");
+            // Get tasks for the year
+            List<Task> tasks = repo.findByYear(year);
+            
+            // Create data rows
+            int rowNum = 1;
+            for (Task task : tasks) {
+                HSSFRow row = sheet.createRow(rowNum++);
+                
+                // Title
+                row.createCell(0).setCellValue(task.getTitle() != null ? task.getTitle() : "");
+                
+                // Category
+                row.createCell(1).setCellValue(task.getCategory() != null ? task.getCategory() : "");
+                
+                // Priority
+                row.createCell(2).setCellValue(task.getPriority() != null ? task.getPriority().toString() : "");
+                
+                // Due Date
+                if (task.getDueDate() != null) {
+                    row.createCell(3).setCellValue(task.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                } else {
+                    row.createCell(3).setCellValue("");
+                }
+                
+                // Completed
+                row.createCell(4).setCellValue(task.isCompleted() ? "Yes" : "No");
+                
+                // Completion Date
+                if (task.getCompletionTimestamp() != null) {
+                    row.createCell(5).setCellValue(task.getCompletionTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                } else {
+                    row.createCell(5).setCellValue("");
+                }
+            }
+            
+            // Auto-size columns
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            // Write the workbook to the output stream
+            workbook.write(outputStream);
+        } catch (Exception e) {
+            throw new IOException("Error generating Excel file: " + e.getMessage(), e);
         }
-
-        workbook.write(outputStream);
-        workbook.close();
     }
 }

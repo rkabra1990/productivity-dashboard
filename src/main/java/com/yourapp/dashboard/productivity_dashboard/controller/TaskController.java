@@ -64,12 +64,16 @@ public class TaskController {
             selectedYear = LocalDate.now().getYear(); // no data at all
         }
         
-        // Get tasks
+        // Get pending tasks for the pending tab
         List<Task> pendingTasks = service.getPendingTasks();
-        List<Task> completedTasks = service.getCompletedTasks();
         
-        // Get completed tasks grouped by month
+        // Get completed tasks grouped by month for the completed tab
         Map<String, List<Task>> completedTasksByMonth = service.getCompletedTasksGroupedByMonth();
+        
+        // Calculate total completed tasks count
+        int completedTasksCount = completedTasksByMonth.values().stream()
+            .mapToInt(List::size)
+            .sum();
         
         // Get the current month as the default selected month if available
         String currentMonthYear = LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
@@ -84,7 +88,7 @@ public class TaskController {
         model.addAttribute("years", service.getAvailableYears());
         model.addAttribute("task", new Task());
         model.addAttribute("tasks", pendingTasks);
-        model.addAttribute("completedTasksCount", completedTasks.size());
+        model.addAttribute("completedTasksCount", completedTasksCount);
 
         return "tasks";
     }

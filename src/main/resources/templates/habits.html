@@ -4,7 +4,6 @@
       layout:decorate="~{fragments/layout}">
 <head>
     <title>Habit Tracker | ProdDash</title>
-    <th:block th:replace="fragments/header :: header"></th:block>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -12,41 +11,84 @@
             --primary-color: #4a6baf;
             --secondary-color: #6c757d;
             --success-color: #28a745;
+            --warning-color: #ffc107;
             --danger-color: #dc3545;
             --light-bg: #f8f9fa;
             --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --border-radius: 12px;
             --transition: all 0.3s ease;
         }
         
         body {
             background-color: #f5f7fb;
-            color: #333;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #2c3e50;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
         }
         
         .container {
             max-width: 1200px;
-            padding: 2rem 1rem;
+            padding: 2rem 1.5rem;
+        }
+        
+        /* Header Styles */
+        .page-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .page-header h1 {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .page-header p {
+            color: #6c757d;
+            margin-bottom: 0;
         }
     </style>
     <th:block layout:fragment="head">
     <style>
         /* Stats Section */
-        .habit-stats {
+        .stats-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin: 2rem 0 2.5rem;
         }
         
         .stat-box {
             background: white;
             padding: 1.5rem 1rem;
-            border-radius: 12px;
+            border-radius: var(--border-radius);
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #e9ecef;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+        
+        .stat-box p {
+            color: #6c757d;
+            margin: 0;
+            font-size: 0.95rem;
         }
         
         .stat-box:hover {
@@ -111,60 +153,133 @@
         /* Habit Cards */
         .habit-card {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--border-radius);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.05);
             position: relative;
-            transition: all 0.3s ease;
-            border-left: 4px solid transparent;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         
         .habit-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-        }
-        
-        .habit-card {
-            transition: all 0.3s ease-in-out;
-            transform-origin: center;
-        }
-        
-        .habit-card.completing {
-            transform: scale(0.98);
-            background-color: rgba(25, 135, 84, 0.05);
-            box-shadow: 0 2px 10px rgba(25, 135, 84, 0.1);
-            transition: all 0.3s ease-in-out;
+            transform: translateY(-4px);
+            box-shadow: var(--card-hover-shadow);
         }
         
         .habit-card.completed {
-            opacity: 0.6;
-            border-left: 4px solid #198754;
-            background-color: rgba(25, 135, 84, 0.05);
-            transform: translateX(10px);
-            transition: all 0.4s ease-in-out;
+            opacity: 0.8;
+            background-color: #f8f9fa;
         }
         
-        .completed .habit-title {
+        .habit-card.completed .habit-title {
             text-decoration: line-through;
             color: #6c757d;
-            transition: all 0.3s ease-in-out;
         }
         
-        .streak {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: #fff3cd;
-            color: #856404;
-            border-radius: 12px;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.8rem;
+        .habit-title {
+            font-size: 1.25rem;
             font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #2c3e50;
+        }
+        
+        .habit-meta {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .habit-priority {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .priority-HIGH {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .priority-MEDIUM {
+            background-color: #fff8e1;
+            color: #f57f17;
+        }
+        
+        .priority-LOW {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .habit-recurrence {
+            display: inline-flex;
+            align-items: center;
+            color: #546e7a;
+            font-size: 0.85rem;
+        }
+        
+        .habit-recurrence i {
+            margin-right: 0.25rem;
+            font-size: 1rem;
+        }
+        
+        .streak-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .streak-badge i {
+            margin-right: 0.25rem;
+        }
+        
+        .habit-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 0.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .btn-complete {
+            flex: 1;
+            background-color: var(--success-color);
+            border: none;
+            color: white;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-complete:hover {
+            background-color: #218838;
+            transform: translateY(-1px);
+        }
+        
+        .btn-skip {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            transition: all 0.2s;
+        }
+        
+        .btn-skip:hover {
+            background-color: #e9ecef;
+            color: #495057;
         }
         
         /* Progress Bar */
@@ -208,8 +323,6 @@
         }
     </style>
 </head>
-    </th:block>
-</head>
 <body>
     <!-- Toast Container -->
     <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1100"></div>
@@ -217,43 +330,61 @@
     <div layout:fragment="content">
         <div class="container">
             <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="mb-1">Habit Tracker</h1>
-                    <p class="text-muted mb-0">Build better habits, one day at a time</p>
-                </div>
-                <div>
-                    <a href="/habits/archived" class="btn btn-outline-secondary">
-                        <i class="bi bi-archive"></i> View Archived
-                    </a>
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <h1 class="mb-1">Habit Tracker</h1>
+                        <p>Build better habits, one day at a time</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="/habits/archived" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-archive"></i> View Archived
+                        </a>
+                    </div>
                 </div>
             </div>
             
             <!-- Stats Overview -->
             <div class="habit-stats">
-                <div class="stat-box">
-                    <div class="stat-value" th:text="${stats?.currentStreak ?: '0'}">0</div>
-                    <div>Day Streak</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" th:with="rate=${stats?.completionRate != null ? stats.completionRate : 0}" 
-                         th:text="${#numbers.formatDecimal(rate, 0, 0)} + '%'">0%</div>
-                    <div>Completion Rate</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" th:text="${stats?.totalHabits ?: '0'}">0</div>
-                    <div>Active Habits</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value" th:text="${stats?.totalCompletedToday ?: '0'}">0</div>
-                    <div>Completed Today</div>
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <div class="stat-value" th:text="${stats?.completionRate != null ? stats.completionRate + '%' : '0%'}">0%</div>
+                        <p>Completion Rate</p>
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <i class="bi bi-graph-up" style="font-size: 1.5rem; opacity: 0.1;"></i>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" th:text="${stats?.totalHabits ?: '0'}">0</div>
+                        <p>Active Habits</p>
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <i class="bi bi-list-check" style="font-size: 1.5rem; opacity: 0.1;"></i>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" th:text="${stats?.totalCompletedToday ?: '0'}">0</div>
+                        <p>Completed Today</p>
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <i class="bi bi-check-circle" style="font-size: 1.5rem; opacity: 0.1;"></i>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" th:text="${stats?.currentStreak ?: '0'}">0</div>
+                        <p>Day Streak</p>
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <i class="bi bi-fire" style="font-size: 1.5rem; opacity: 0.1;"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
+            <!-- Today's Habits Section -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0">Today's Habits</h2>
-                <button class="btn btn-primary" onclick="document.getElementById('habitForm').scrollIntoView({behavior: 'smooth'})">
+                <div>
+                    <h2 class="mb-0">Today's Habits</h2>
+                    <p class="text-muted mb-0" th:if="${todaysHabits != null}" th:text="'You have ' + ${todaysHabits.size()} + ' habits scheduled for today'"></p>
+                </div>
+                <button class="btn btn-primary d-flex align-items-center gap-2" onclick="document.getElementById('habitForm').scrollIntoView({behavior: 'smooth'})">
                     <i class="bi bi-plus-lg"></i> Add New Habit
                 </button>
             </div>

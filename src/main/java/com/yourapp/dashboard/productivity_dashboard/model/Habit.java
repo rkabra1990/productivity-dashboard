@@ -1,7 +1,7 @@
 package com.yourapp.dashboard.productivity_dashboard.model;
 
+import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
-import com.yourapp.dashboard.productivity_dashboard.service.Recurrence;
 import jakarta.persistence.*;
 
 import java.time.*;
@@ -15,6 +15,9 @@ public class Habit {
     private Long id;
 
     private String name;
+    
+    @Column(columnDefinition = "TEXT")
+    private String description;
     
     @OneToMany(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HabitLog> logs = new ArrayList<>();
@@ -39,7 +42,20 @@ public class Habit {
     private Boolean archived = false;
     private int currentStreak = 0;
     private int bestStreak = 0;
+    private int missedCount = 0;
     private LocalDate lastCompleted;
+    private LocalDateTime lastScheduled;
+    private LocalDateTime nextScheduled;
+    private Integer gracePeriodMinutes = 15; // Default 15-minute grace period
+    private boolean allowMultipleDaily = false;
+    private List<LocalTime> dailyReminderTimes = new ArrayList<>(); // For multiple daily reminders
+    private String timeZone = ZoneId.systemDefault().toString(); // Store user's timezone
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
 
     public Long getId() {
@@ -56,6 +72,14 @@ public class Habit {
 
     public void setName(String name) {
         this.name = name;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Priority getPriority() {
@@ -124,7 +148,7 @@ public class Habit {
 
     public void setCurrentStreak(int currentStreak) {
         this.currentStreak = currentStreak;
-        if (currentStreak > bestStreak) {
+        if (currentStreak > this.bestStreak) {
             this.bestStreak = currentStreak;
         }
     }
@@ -147,6 +171,61 @@ public class Habit {
 
     public void setYearlyDay(Integer yearlyDay) {
         this.yearlyDay = yearlyDay;
+    }
+    
+    public Integer getGracePeriodMinutes() {
+        return gracePeriodMinutes != null ? gracePeriodMinutes : 15; // Default to 15 minutes if null
+    }
+    
+    public void setGracePeriodMinutes(Integer gracePeriodMinutes) {
+        this.gracePeriodMinutes = gracePeriodMinutes != null ? gracePeriodMinutes : 15; // Ensure never null
+    }
+    
+    public boolean isAllowMultipleDaily() {
+        return allowMultipleDaily;
+    }
+    
+    public void setAllowMultipleDaily(boolean allowMultipleDaily) {
+        this.allowMultipleDaily = allowMultipleDaily;
+    }
+    
+    public LocalDateTime getLastScheduled() {
+        return lastScheduled;
+    }
+    
+    public void setLastScheduled(LocalDateTime lastScheduled) {
+        this.lastScheduled = lastScheduled;
+    }
+    
+    public int getMissedCount() {
+        return missedCount;
+    }
+    
+    public void setMissedCount(int missedCount) {
+        this.missedCount = missedCount;
+    }
+    
+    public String getTimeZone() {
+        return timeZone != null ? timeZone : ZoneId.systemDefault().toString();
+    }
+    
+    public void setTimeZone(String timeZone) {
+        this.timeZone = timeZone != null ? timeZone : ZoneId.systemDefault().toString();
+    }
+    
+    @ElementCollection
+    @CollectionTable(name = "habit_reminder_times", joinColumns = @JoinColumn(name = "habit_id"))
+    @Column(name = "reminder_time")
+    public List<LocalTime> getDailyReminderTimes() {
+        if (dailyReminderTimes == null) {
+            dailyReminderTimes = new ArrayList<>();
+        }
+        return dailyReminderTimes;
+    }
+    
+    public void setDailyReminderTimes(List<LocalTime> dailyReminderTimes) {
+        this.dailyReminderTimes = dailyReminderTimes != null ? 
+            new ArrayList<>(dailyReminderTimes) : new ArrayList<>();
     }
     
     public List<HabitLog> getLogs() {
@@ -175,13 +254,29 @@ public class Habit {
         
         long totalLogs = logs.size();
         long completedLogs = logs.stream()
-            .filter(log -> log.isCompleted() != null && log.isCompleted())
+            .filter(log -> log != null && Boolean.TRUE.equals(log.isCompleted()))
             .count();
         
         return totalLogs > 0 ? (completedLogs * 100.0) / totalLogs : 0.0;
     }
     
     @Transient
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
     public LocalDateTime getNextOccurrence() {
         if (this.recurrence == null) {
             return LocalDateTime.now().plusDays(1); // Default to daily if recurrence is not set

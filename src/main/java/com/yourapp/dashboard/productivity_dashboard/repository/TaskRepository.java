@@ -28,4 +28,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     
     @Query("SELECT DISTINCT YEAR(t.dueDate) FROM Task t ORDER BY YEAR(t.dueDate) DESC")
     List<Integer> findDistinctYears();
+    
+    @Query("SELECT t FROM Task t WHERE YEAR(t.dueDate) = :year")
+    List<Task> findByYear(@Param("year") int year);
 }
