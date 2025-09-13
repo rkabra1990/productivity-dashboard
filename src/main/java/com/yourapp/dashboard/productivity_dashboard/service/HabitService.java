@@ -168,45 +168,81 @@ public class HabitService {
         Habit habit = habitRepo.findById(habitId)
                 .orElseThrow(() -> new RuntimeException("Habit not found with id: " + habitId));
 
-        HabitLog log = logRepo.findById(logId)
-                .orElseThrow(() -> new RuntimeException("Habit log not found with id: " + logId));
+        // For hourly habits, we need to ensure we're working with a managed entity
+        HabitLog log;
+        if (habit.getRecurrence() == Recurrence.HOURLY) {
+            // Find the log in the current persistence context
+            log = logRepo.findById(logId)
+                    .orElseThrow(() -> new RuntimeException("Habit log not found with id: " + logId));
+            
+            // Verify the log belongs to this habit
+            if (!habit.getId().equals(log.getHabit().getId())) {
+                throw new IllegalArgumentException("Log does not belong to the specified habit");
+            }
+            
+            // If the log is already completed, just return it
+            if (log.getCompleted()) {
+                return log;
+            }
+            
+            // Mark as completed
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime scheduledTime = log.getScheduledDateTime();
+            int gracePeriod = habit.getGracePeriodMinutes() != null ?
+                    habit.getGracePeriodMinutes() : DEFAULT_GRACE_PERIOD;
+            boolean withinGracePeriod = now.isBefore(scheduledTime.plusMinutes(gracePeriod));
+            
+            log.setCompleted(true);
+            log.setCompletedDateTime(now);
+            log.setGracePeriodUsed(!scheduledTime.isBefore(now) || !withinGracePeriod);
+            log.setCompletedInGracePeriod(withinGracePeriod);
+            log.setUpdatedAt(now);
+            
+            // Save the log
+            log = logRepo.save(log);
+            
+            // Update habit stats and streaks
+            updateHabitStreaks(habit);
+            habit.setLastCompleted(LocalDate.now());
+            habit.setUpdatedAt(now);
+            habitRepo.save(habit);
+            
+            return log;
+        } else {
+            // Original logic for non-hourly habits
+            log = logRepo.findById(logId)
+                    .orElseThrow(() -> new RuntimeException("Habit log not found with id: " + logId));
 
-        if (!habit.getId().equals(log.getHabit().getId())) {
-            throw new IllegalArgumentException("Log does not belong to the specified habit");
+            if (!habit.getId().equals(log.getHabit().getId())) {
+                throw new IllegalArgumentException("Log does not belong to the specified habit");
+            }
+
+            if (log.getCompleted()) {
+                return log; // Already completed
+            }
+
+            // Check if within grace period
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime scheduledTime = log.getScheduledDateTime();
+            int gracePeriod = habit.getGracePeriodMinutes() != null ?
+                    habit.getGracePeriodMinutes() : DEFAULT_GRACE_PERIOD;
+
+            boolean withinGracePeriod = now.isBefore(scheduledTime.plusMinutes(gracePeriod));
+
+            // Mark as completed
+            log.setCompleted(true);
+            log.setCompletedDateTime(now);
+            log.setGracePeriodUsed(!scheduledTime.isBefore(now) || !withinGracePeriod);
+            log.setCompletedInGracePeriod(withinGracePeriod);
+            log.setUpdatedAt(now);
+
+            // Update habit stats and streaks
+            updateHabitStreaks(habit);
+            habit.setLastCompleted(LocalDate.now());
+            habit.setUpdatedAt(now);
+            
+            return logRepo.save(log);
         }
-
-        if (log.getCompleted()) {
-            return log; // Already completed
-        }
-
-        // Check if within grace period
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime scheduledTime = log.getScheduledDateTime();
-        int gracePeriod = habit.getGracePeriodMinutes() != null ?
-                habit.getGracePeriodMinutes() : DEFAULT_GRACE_PERIOD;
-
-        boolean withinGracePeriod = now.isBefore(scheduledTime.plusMinutes(gracePeriod));
-
-        // Mark as completed
-        log.setCompleted(true);
-        log.setCompletedDateTime(now);
-        log.setGracePeriodUsed(!scheduledTime.isBefore(now) || !withinGracePeriod);
-        log.setCompletedInGracePeriod(withinGracePeriod);
-        log.setUpdatedAt(now);
-
-        // Update habit stats and streaks
-        updateHabitStreaks(habit);
-        habit.setLastCompleted(LocalDate.now());
-        habit.setUpdatedAt(now);
-
-        // Save changes
-        habitRepo.save(habit);
-        HabitLog savedLog = logRepo.save(log);
-
-        // Log completion
-        logHabitCompletion(habit, log, withinGracePeriod);
-
-        return savedLog;
     }
 
 
@@ -603,100 +639,213 @@ public class HabitService {
      */
     public List<HabitLog> getUpcomingLogs(Habit habit) {
         LocalDateTime now = LocalDateTime.now();
-        // Get logs for the next 7 days
-        LocalDateTime endDate = now.plusDays(7);
-        return logRepo.findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
-            habit, now, endDate);
+        List<HabitLog> upcomingLogs = new ArrayList<>();
+        
+        if (habit.getRecurrence() == Recurrence.HOURLY) {
+            // For hourly habits, generate the next 24 hours of logs
+            LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
+            LocalDateTime endDate = currentHour.plusDays(1);
+            
+            // Get existing logs for the next 24 hours
+            List<HabitLog> existingLogs = logRepo.findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
+                habit, currentHour, endDate);
+            
+            // Generate hourly logs for the next 24 hours
+            for (int i = 0; i < 24; i++) {
+                LocalDateTime scheduledTime = currentHour.plusHours(i);
+                
+                // Check if we already have a log for this hour
+                boolean logExists = existingLogs.stream()
+                    .anyMatch(log -> log.getScheduledDateTime().equals(scheduledTime));
+                
+                if (!logExists) {
+                    // Create a new log for this hour
+                    HabitLog log = new HabitLog();
+                    log.setHabit(habit);
+                    log.setScheduledDateTime(scheduledTime);
+                    log.setCompleted(false);
+                    upcomingLogs.add(log);
+                } else {
+                    // Use the existing log
+                    HabitLog existingLog = existingLogs.stream()
+                        .filter(log -> log.getScheduledDateTime().equals(scheduledTime))
+                        .findFirst()
+                        .orElse(null);
+                    if (existingLog != null) {
+                        upcomingLogs.add(existingLog);
+                    }
+                }
+            }
+            
+            // Add any existing logs that might be in the future but beyond 24 hours
+            existingLogs.stream()
+                .filter(log -> log.getScheduledDateTime().isAfter(endDate))
+                .forEach(upcomingLogs::add);
+                
+        } else {
+            // For non-hourly habits, get logs for the next 7 days
+            LocalDateTime endDate = now.plusDays(7);
+            upcomingLogs = logRepo.findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
+                habit, now, endDate);
+                
+            // If no logs found, generate the next occurrence
+            if (upcomingLogs.isEmpty()) {
+                HabitLog nextOccurrence = new HabitLog();
+                nextOccurrence.setHabit(habit);
+                nextOccurrence.setScheduledDateTime(calculateNextScheduledTime(habit, now.atZone(ZoneId.systemDefault())));
+                nextOccurrence.setCompleted(false);
+                upcomingLogs.add(nextOccurrence);
+            }
+        }
+        
+        return upcomingLogs;
     }
     
     /**
      * Get today's active habits based on their recurrence patterns
      */
+    @Transactional
     public List<Habit> getTodaysHabits() {
-        LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        
         List<Habit> habits = habitRepo.findByArchivedFalse();
+        List<Habit> result = new ArrayList<>();
 
-        return habits.stream()
-                .filter(habit -> {
-                    // Check if habit is due today based on its recurrence
-                    if (habit.getRecurrence() == null) return false;
+        for (Habit habit : habits) {
+            if (habit.getRecurrence() == null) continue;
 
-                    switch (habit.getRecurrence()) {
-                        case HOURLY:
-                            // For hourly habits, we want to show them at all times
-                            // But we should check if there's a log for the current hour
-                            LocalDateTime startOfHour = now.withMinute(0).withSecond(0).withNano(0);
-                            LocalDateTime endOfHour = startOfHour.plusHours(1);
-                            
-                            // Check if there's a log for the current hour that's not completed
-                            List<HabitLog> currentHourLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-                                habit, startOfHour, endOfHour);
-                                
-                            // If no log exists for current hour, or it's not completed, show the habit
-                            return currentHourLogs.stream()
-                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
-                                
-                        case DAILY:
-                            // For daily habits, check if they're scheduled for the current time or already completed today
-                            LocalDateTime startOfDay = today.atStartOfDay();
-                            LocalDateTime endOfDay = startOfDay.plusDays(1);
-                            
-                            // Check if there's a log for today that's already completed
-                            List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-                                habit, startOfDay, endOfDay);
-                                
-                            // If no log exists for today, or it's not completed, show the habit
-                            return todayLogs.stream()
-                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
-                                
-                        case WEEKLY:
-                            if (habit.getWeeklyDay() == null || today.getDayOfWeek() != habit.getWeeklyDay()) {
-                                return false;
-                            }
-                            // Check if already completed this week
-                            LocalDate startOfWeek = today.with(DayOfWeek.MONDAY);
-                            LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
-                            LocalDateTime endOfWeekDateTime = startOfWeekDateTime.plusWeeks(1);
-                            
-                            return logRepo.findByHabitAndScheduledDateTimeBetween(
-                                habit, startOfWeekDateTime, endOfWeekDateTime)
-                                .stream()
-                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
-                                
-                        case MONTHLY:
-                            if (habit.getMonthlyDay() == null || today.getDayOfMonth() != habit.getMonthlyDay()) {
-                                return false;
-                            }
-                            // Check if already completed this month
-                            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
-                            LocalDateTime startOfNextMonth = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
-                            
-                            return logRepo.findByHabitAndScheduledDateTimeBetween(
-                                habit, startOfMonth, startOfNextMonth)
-                                .stream()
-                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
-                                
-                        case YEARLY:
-                            if (habit.getYearlyMonth() == null || habit.getYearlyDay() == null ||
-                                today.getMonthValue() != habit.getYearlyMonth() || 
-                                today.getDayOfMonth() != habit.getYearlyDay()) {
-                                return false;
-                            }
-                            // Check if already completed this year
-                            LocalDateTime startOfYear = today.withDayOfYear(1).atStartOfDay();
-                            LocalDateTime startOfNextYear = today.plusYears(1).withDayOfYear(1).atStartOfDay();
-                            
-                            return logRepo.findByHabitAndScheduledDateTimeBetween(
-                                habit, startOfYear, startOfNextYear)
-                                .stream()
-                                .noneMatch(log -> log.getCompleted() != null && log.getCompleted());
-                                
-                        default:
-                            return false;
+            // For hourly habits, we need to generate logs for the entire day
+            if (habit.getRecurrence() == Recurrence.HOURLY) {
+                // Generate logs for each hour of the day
+                List<HabitLog> todaysLogs = new ArrayList<>();
+                LocalDateTime currentHour = startOfDay;
+                
+                // Get all existing logs for today
+                List<HabitLog> existingLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                    habit, startOfDay, endOfDay);
+                
+                // Generate logs for each hour of the day
+                while (currentHour.isBefore(endOfDay)) {
+                    LocalDateTime hourStart = currentHour;
+                    LocalDateTime hourEnd = currentHour.plusHours(1);
+                    
+                    // Find existing log for this hour
+                    Optional<HabitLog> existingLog = existingLogs.stream()
+                        .filter(log -> !log.getScheduledDateTime().isBefore(hourStart) && 
+                                     log.getScheduledDateTime().isBefore(hourEnd))
+                        .findFirst();
+                    
+                    if (existingLog.isPresent()) {
+                        todaysLogs.add(existingLog.get());
+                    } else {
+                        // Create a new log for this hour if none exists
+                        HabitLog log = new HabitLog();
+                        log.setHabit(habit);
+                        log.setScheduledDateTime(hourStart);
+                        log.setCompleted(false);
+                        
+                        // Mark as missed if the hour has passed and not completed
+                        if (hourEnd.isBefore(now)) {
+                            log.setMissed(true);
+                            log.setMissedDateTime(hourEnd);
+                        }
+                        
+                        // Save the new log to the database
+                        log = logRepo.save(log);
+                        todaysLogs.add(log);
                     }
-                })
-                .collect(Collectors.toList());
+                    
+                    currentHour = hourEnd;
+                }
+                
+                // Clear existing logs and add all new ones to avoid orphan removal issues
+                habit.getLogs().clear();
+                habit.getLogs().addAll(todaysLogs);
+                
+                // Save the habit to update the logs collection
+                habit = habitRepo.save(habit);
+                
+                // Add to result if there are any logs for today
+                if (!todaysLogs.isEmpty()) {
+                    result.add(habit);
+                }
+                
+                continue;
+            }
+            
+            // For non-hourly habits, use the existing logic
+            switch (habit.getRecurrence()) {
+                case DAILY:
+                    // For daily habits, check if there's an uncompleted log for today
+                    List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                        habit, startOfDay, endOfDay);
+                    
+                    boolean dailyCompleted = todayLogs.stream()
+                        .anyMatch(log -> log.getCompleted() != null && log.getCompleted());
+                    
+                    if (!dailyCompleted) {
+                        result.add(habit);
+                    }
+                    break;
+                    
+                case WEEKLY:
+                    if (habit.getWeeklyDay() != null && today.getDayOfWeek() == habit.getWeeklyDay()) {
+                        LocalDate startOfWeek = today.with(DayOfWeek.MONDAY);
+                        LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+                        LocalDateTime endOfWeekDateTime = startOfWeekDateTime.plusWeeks(1);
+                        
+                        boolean weeklyCompleted = logRepo.findByHabitAndScheduledDateTimeBetween(
+                            habit, startOfWeekDateTime, endOfWeekDateTime)
+                            .stream()
+                            .anyMatch(log -> log.getCompleted() != null && log.getCompleted());
+                        
+                        if (!weeklyCompleted) {
+                            result.add(habit);
+                        }
+                    }
+                    break;
+                    
+                case MONTHLY:
+                    if (habit.getMonthlyDay() != null && today.getDayOfMonth() == habit.getMonthlyDay()) {
+                        LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+                        LocalDateTime startOfNextMonth = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
+                        
+                        boolean monthlyCompleted = logRepo.findByHabitAndScheduledDateTimeBetween(
+                            habit, startOfMonth, startOfNextMonth)
+                            .stream()
+                            .anyMatch(log -> log.getCompleted() != null && log.getCompleted());
+                        
+                        if (!monthlyCompleted) {
+                            result.add(habit);
+                        }
+                    }
+                    break;
+                    
+                case YEARLY:
+                    if (habit.getYearlyMonth() != null && habit.getYearlyDay() != null &&
+                        today.getMonthValue() == habit.getYearlyMonth() && 
+                        today.getDayOfMonth() == habit.getYearlyDay()) {
+                        
+                        LocalDateTime startOfYear = today.withDayOfYear(1).atStartOfDay();
+                        LocalDateTime startOfNextYear = today.plusYears(1).withDayOfYear(1).atStartOfDay();
+                        
+                        boolean yearlyCompleted = logRepo.findByHabitAndScheduledDateTimeBetween(
+                            habit, startOfYear, startOfNextYear)
+                            .stream()
+                            .anyMatch(log -> log.getCompleted() != null && log.getCompleted());
+                        
+                        if (!yearlyCompleted) {
+                            result.add(habit);
+                        }
+                    }
+                    break;
+            }
+        }
+        
+        return result;
     }
 
     public List<HabitLog> getLogsBetween(Habit habit, LocalDateTime start, LocalDateTime end) {

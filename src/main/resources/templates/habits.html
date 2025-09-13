@@ -490,51 +490,75 @@
             
             <div class="row g-4">
                 <div th:each="habit : ${todaysHabits}" class="col-12 col-md-6 col-lg-4">
-                    <div class="habit-card">
+                    <div class="habit-card" th:classappend="${habit.recurrence == 'HOURLY'} ? 'hourly-habit' : ''">
+                        <!-- Streak Badge -->
                         <div th:if="${habit.currentStreak > 0}" class="streak">
                             <i class="bi bi-fire"></i>
-                            <span th:text="${habit.currentStreak} + ' day' + (${habit.currentStreak} != 1 ? 's' : '')"></span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h3 class="habit-title mb-1" th:text="${habit.name}"></h3>
-                                <p th:if="${habit.description}" th:text="${habit.description}" class="text-muted small mb-2"></p>
-                            </div>
-                            <span class="badge" 
-                                  th:if="${habit.priority != null}"
-                                  th:class="'priority-' + ${habit.priority}"
-                                  th:text="${habit.priority}">
-                            </span>
+                            <span th:text="${habit.currentStreak} + ' ' + (${habit.recurrence == 'HOURLY'} ? 'hrs' : 'day') + (${habit.currentStreak} != 1 ? 's' : '')"></span>
                         </div>
                         
-                        <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
-                            <span class="scheduled-time d-flex align-items-center">
-                                <i class="bi bi-clock me-1"></i>
-                                <span th:if="${habit.scheduledTime != null}" 
-                                      th:text="${#temporals.format(habit.scheduledTime, 'h:mm a')}">
+                        <!-- Habit Name and Recurrence -->
+                        <h4 class="d-flex justify-content-between align-items-center">
+                            <span th:text="${habit.name}"></span>
+                            <span th:if="${habit.recurrence == 'HOURLY'}" class="badge bg-info">Hourly</span>
+                        </h4>
+                        
+                        <!-- Schedule Information -->
+                        <div class="schedule-info mb-2">
+                            <i class="bi bi-arrow-repeat"></i>
+                            <span th:if="${habit.recurrence == 'HOURLY'}">Every hour</span>
+                            <span th:if="${habit.recurrence == 'DAILY'}">Daily</span>
+                            <span th:if="${habit.recurrence == 'WEEKLY'}" th:text="'Every ' + ${#temporals.dayOfWeekName(habit.weeklyDay)}"></span>
+                            <span th:if="${habit.recurrence == 'MONTHLY'}" th:text="'Day ' + ${habit.monthlyDay} + ' of month'"></span>
+                            <span th:if="${habit.recurrence == 'YEARLY'}" th:text="${#temporals.monthName(habit.yearlyMonth)} + ' ' + ${habit.yearlyDay}"></span>
+                            
+                            <span th:if="${habit.scheduledTime != null && habit.recurrence != 'HOURLY'}" 
+                                  th:text="' at ' + ${#temporals.format(habit.scheduledTime, 'h:mm a')}"></span>
+                        </div>
+                        
+                        <!-- Hourly Logs -->
+                        <div th:if="${habit.recurrence == 'HOURLY' && !#lists.isEmpty(habit.logs)}" class="hourly-logs mb-2">
+                            <div th:each="log : ${habit.logs}" class="hourly-log d-flex justify-content-between align-items-center mb-1 p-1 rounded"
+                                 th:classappend="${log.completed} ? 'bg-light' : (log.scheduledDateTime.isBefore(T(java.time.LocalDateTime).now()) ? 'bg-light bg-opacity-50' : '')">
+                                <span class="time" th:text="${#temporals.format(log.scheduledDateTime, 'h:mm a')}"></span>
+                                <span th:if="${log.completed}" class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Done
                                 </span>
-                            </span>
-                            <span th:if="${habit.recurrence != null}" class="text-uppercase" th:text="${habit.recurrence}"></span>
+                                <span th:if="!log.completed && log.scheduledDateTime.isBefore(T(java.time.LocalDateTime).now())" 
+                                      class="badge bg-danger">
+                                    <i class="bi bi-exclamation-triangle"></i> Missed
+                                </span>
+                                <span th:if="!log.completed && log.scheduledDateTime.isAfter(T(java.time.LocalDateTime).now())" 
+                                      class="badge bg-primary">
+                                    <i class="bi bi-clock"></i> Upcoming
+                                </span>
+                            </div>
                         </div>
                         
-                        <!-- Temporarily removed completion rate progress bar -->
-                        <div class="mb-3">
-                            <small class="text-muted">Completion rate: Coming soon</small>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <span class="text-muted small me-2">Actions:</span>
-                                <div class="btn-group btn-group-sm" role="group">
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="d-flex gap-2">
+                                <!-- For non-hourly habits -->
+                                <th:block th:if="${habit.recurrence != 'HOURLY'}">
                                     <a th:href="@{/habits/complete/__${habit.id}__}" 
-                                       class="btn btn-outline-success">
+                                       class="btn btn-sm btn-success">
                                         <i class="bi bi-check-lg"></i> Complete
                                     </a>
-                                    <a th:href="@{/habits/skip/__${habit.id}__}" 
-                                       class="btn btn-outline-warning">
-                                        <i class="bi bi-skip-forward"></i> Skip
-                                    </a>
-                                </div>
+                                </th:block>
+                                
+                                <!-- For hourly habits -->
+                                <th:block th:if="${habit.recurrence == 'HOURLY'}">
+                                    <th:block th:each="log : ${habit.logs}">
+                                        <a th:if="${!log.completed && !log.scheduledDateTime.isAfter(T(java.time.LocalDateTime).now().plusHours(1))}" 
+                                           th:href="@{/habits/complete/__${habit.id}__/log/__${log.id}__}" 
+                                           class="btn btn-sm btn-success me-1">
+                                            <i class="bi bi-check-lg"></i> Complete for <span th:text="${#temporals.format(log.scheduledDateTime, 'h a')}"></span>
+                                        </a>
+                                    </th:block>
+                                </th:block>
+                                <a th:href="@{/habits/skip/__${habit.id}__}" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-skip-forward"></i> Skip
+                                </a>
                             </div>
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="habitMenu" data-bs-toggle="dropdown" aria-expanded="false">

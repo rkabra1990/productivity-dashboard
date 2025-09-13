@@ -142,43 +142,65 @@ public class HabitController {
     @Transactional
     public String completeHabit(
             @PathVariable Long habitId,
+            @RequestParam(required = false) Long logId,
             RedirectAttributes redirectAttributes) {
-        System.out.println("Completing habit with ID: " + habitId); // Debug log
         try {
-            // Get the current date's log for this habit
-            LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-            LocalDateTime endOfDay = startOfDay.plusDays(1);
-            
-            // Find the habit with the ID
             Habit habit = habitService.getHabitById(habitId)
                 .orElseThrow(() -> new RuntimeException("Habit not found with id: " + habitId));
-                
-            // Find today's log for this habit
-            List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
-                habit, startOfDay, endOfDay);
-                
-            HabitLog log;
-            if (todayLogs.isEmpty()) {
-                // If no log exists for today, create one
-                log = new HabitLog();
-                log.setHabit(habit);
-                log.setScheduledDateTime(LocalDateTime.now());
-            } else {
-                log = todayLogs.get(0);
-            }
             
-            // Mark as completed if not already
-            if (!log.getCompleted()) {
-                log.setCompleted(true);
-                log.setCompletedDateTime(LocalDateTime.now());
-                log = logRepo.save(log);
+            if (logId != null) {
+                // Complete specific log (for hourly habits)
+                HabitLog log = logRepo.findById(logId)
+                    .orElseThrow(() -> new RuntimeException("Log not found with id: " + logId));
                 
-                // Update habit streaks
-                habitService.updateHabitStreaks(habit);
+                if (!log.getHabit().getId().equals(habitId)) {
+                    throw new RuntimeException("Log does not belong to the specified habit");
+                }
                 
-                redirectAttributes.addFlashAttribute("successMessage", "Habit marked as completed!");
+                if (!log.getCompleted()) {
+                    log.setCompleted(true);
+                    log.setCompletedDateTime(LocalDateTime.now());
+                    logRepo.save(log);
+                    
+                    // Update habit streaks
+                    habitService.updateHabitStreaks(habit);
+                    
+                    redirectAttributes.addFlashAttribute("successMessage", "Habit marked as completed for " + 
+                        log.getScheduledDateTime().format(DateTimeFormatter.ofPattern("h:mma")) + "!");
+                } else {
+                    redirectAttributes.addFlashAttribute("infoMessage", "This habit was already completed!");
+                }
             } else {
-                redirectAttributes.addFlashAttribute("infoMessage", "Habit was already completed for today!");
+                // For non-hourly habits
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
+                LocalDateTime endOfDay = startOfDay.plusDays(1);
+                
+                // Find or create today's log for this habit
+                List<HabitLog> todayLogs = logRepo.findByHabitAndScheduledDateTimeBetween(
+                    habit, startOfDay, endOfDay);
+                
+                HabitLog log;
+                if (todayLogs.isEmpty()) {
+                    log = new HabitLog();
+                    log.setHabit(habit);
+                    log.setScheduledDateTime(now);
+                } else {
+                    log = todayLogs.get(0);
+                }
+                
+                if (!log.getCompleted()) {
+                    log.setCompleted(true);
+                    log.setCompletedDateTime(now);
+                    logRepo.save(log);
+                    
+                    // Update habit streaks
+                    habitService.updateHabitStreaks(habit);
+                    
+                    redirectAttributes.addFlashAttribute("successMessage", "Habit marked as completed!");
+                } else {
+                    redirectAttributes.addFlashAttribute("infoMessage", "Habit was already completed for today!");
+                }
             }
             
             return "redirect:/habits";
