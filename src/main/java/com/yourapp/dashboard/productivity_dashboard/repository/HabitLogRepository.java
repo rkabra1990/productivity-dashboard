@@ -48,6 +48,9 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long>, Habit
     // Find logs by habit and completion status
     List<HabitLog> findByHabitAndCompleted(Habit habit, Boolean completed);
     
+    // Check if a log exists for a habit within a date range
+    boolean existsByHabitAndScheduledDateTimeBetween(Habit habit, LocalDateTime start, LocalDateTime end);
+    
     // Find logs by completion status
     List<HabitLog> findByCompleted(Boolean completed);
     
