@@ -42,8 +42,32 @@ public class HabitController {
         // Get all active (non-archived) habits
         List<Habit> habits = habitService.getAllHabits();
         
-        // Get today's habits
+        // Get today's habits with progress information
         List<Habit> todaysHabits = habitService.getTodaysHabits();
+        
+        // Calculate progress for each habit
+        Map<Long, Double> habitProgress = new HashMap<>();
+        Map<Long, Integer> totalOccurrences = new HashMap<>();
+        Map<Long, Integer> completedOccurrences = new HashMap<>();
+        
+        for (Habit habit : habits) {
+            // Get progress from the service
+            List<Habit> habitWithProgress = habitService.getTodaysHabits().stream()
+                .filter(h -> h.getId().equals(habit.getId()))
+                .collect(Collectors.toList());
+                
+            if (!habitWithProgress.isEmpty()) {
+                Habit h = habitWithProgress.get(0);
+                habitProgress.put(habit.getId(), h.getProgress());
+                totalOccurrences.put(habit.getId(), h.getTotalOccurrences());
+                completedOccurrences.put(habit.getId(), h.getCompletedOccurrences());
+            } else {
+                // Default values if no progress data
+                habitProgress.put(habit.getId(), 0.0);
+                totalOccurrences.put(habit.getId(), 0);
+                completedOccurrences.put(habit.getId(), 0);
+            }
+        }
         
         // Get habit statistics
         Map<String, Object> stats = habitService.getHabitStats();
@@ -53,6 +77,11 @@ public class HabitController {
         model.addAttribute("todaysHabits", todaysHabits);
         model.addAttribute("stats", stats);
         model.addAttribute("habit", new Habit());
+        
+        // Add progress information
+        model.addAttribute("habitProgress", habitProgress);
+        model.addAttribute("totalOccurrences", totalOccurrences);
+        model.addAttribute("completedOccurrences", completedOccurrences);
         
         // Add enums for the form
         model.addAttribute("priorities", Priority.values());

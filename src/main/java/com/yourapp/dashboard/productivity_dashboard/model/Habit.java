@@ -48,6 +48,15 @@ public class Habit {
     private int bestStreak = 0;
     private int missedCount = 0;
     private LocalDate lastCompleted;
+    
+    @Transient
+    private double progress = 0.0;
+    
+    @Transient
+    private int totalOccurrences = 0;
+    
+    @Transient
+    private int completedOccurrences = 0;
     private LocalDateTime lastScheduled;
     private LocalDateTime nextScheduled;
     private Integer gracePeriodMinutes = 15; // Default 15-minute grace period
@@ -201,12 +210,60 @@ public class Habit {
         this.lastScheduled = lastScheduled;
     }
     
+    public double getProgress() {
+        return progress;
+    }
+    
+    public void setProgress(double progress) {
+        this.progress = progress;
+    }
+    
+    public int getTotalOccurrences() {
+        return totalOccurrences;
+    }
+    
+    public void setTotalOccurrences(int totalOccurrences) {
+        this.totalOccurrences = totalOccurrences;
+    }
+    
+    public int getCompletedOccurrences() {
+        return completedOccurrences;
+    }
+    
+    public void setCompletedOccurrences(int completedOccurrences) {
+        this.completedOccurrences = completedOccurrences;
+    }
+    
     public int getMissedCount() {
         return missedCount;
     }
     
     public void setMissedCount(int missedCount) {
         this.missedCount = missedCount;
+    }
+    
+    public double getProgress() {
+        return progress;
+    }
+    
+    public void setProgress(double progress) {
+        this.progress = progress;
+    }
+    
+    public int getTotalOccurrences() {
+        return totalOccurrences;
+    }
+    
+    public void setTotalOccurrences(int totalOccurrences) {
+        this.totalOccurrences = totalOccurrences;
+    }
+    
+    public int getCompletedOccurrences() {
+        return completedOccurrences;
+    }
+    
+    public void setCompletedOccurrences(int completedOccurrences) {
+        this.completedOccurrences = completedOccurrences;
     }
     
     public String getTimeZone() {
