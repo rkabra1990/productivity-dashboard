@@ -1,6 +1,7 @@
 package com.yourapp.dashboard.productivity_dashboard.service;
 
 import com.yourapp.dashboard.productivity_dashboard.model.Habit;
+import com.yourapp.dashboard.productivity_dashboard.config.SleepWindow;
 import com.yourapp.dashboard.productivity_dashboard.model.HabitLog;
 import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import com.yourapp.dashboard.productivity_dashboard.repository.HabitLogRepository;
@@ -13,9 +14,9 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 
 @Service
 @Transactional(readOnly = true)
@@ -45,6 +46,90 @@ public class HabitService {
 
     public List<Habit> getArchivedHabits() {
         return habitRepo.findByArchivedTrue();
+    }
+    
+    /**
+     * Get statistics about habits and their completion rates
+     * @return Map containing various habit statistics
+     */
+    public Map<String, Object> getHabitStats() {
+        Map<String, Object> stats = new HashMap<>();
+        List<Habit> habits = getAllHabits();
+        
+        // Basic counts
+        stats.put("totalHabits", habits.size());
+        stats.put("activeHabits", habits.stream().filter(h -> !h.isArchived()).count());
+        stats.put("archivedHabits", habits.stream().filter(Habit::isArchived).count());
+        
+        // Completion stats
+        List<HabitLog> recentLogs = logRepo.findTop50ByOrderByScheduledDateTimeDesc();
+        long totalCompletions = recentLogs.stream().filter(log -> Boolean.TRUE.equals(log.getCompleted())).count();
+        long totalMissed = recentLogs.stream().filter(log -> Boolean.TRUE.equals(log.getMissed())).count();
+        long totalSkipped = recentLogs.stream().filter(log -> Boolean.TRUE.equals(log.isSkipped())).count();
+        
+        // Get today's date at start of day for filtering
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+        
+        // Count completions today
+        long totalCompletedToday = logRepo.countByCompletedAndScheduledDateTimeBetween(true, startOfDay, endOfDay);
+        
+        // Get current streak (max of all active habits' current streaks)
+        int currentStreak = habits.stream()
+            .filter(h -> !h.isArchived())
+            .mapToInt(Habit::getCurrentStreak)
+            .max()
+            .orElse(0);
+        
+        stats.put("totalCompletions", totalCompletions);
+        stats.put("totalMissed", totalMissed);
+        stats.put("totalSkipped", totalSkipped);
+        stats.put("totalCompletedToday", totalCompletedToday);
+        stats.put("currentStreak", currentStreak);
+        
+        // Calculate completion rate (avoid division by zero)
+        double completionRate = recentLogs.isEmpty() ? 0 : 
+            (double) totalCompletions / (totalCompletions + totalMissed + totalSkipped) * 100;
+        stats.put("completionRate", Math.round(completionRate * 10) / 10.0);
+        
+        // Streak statistics
+        Optional<Habit> bestStreakHabit = habits.stream()
+            .filter(h -> !h.isArchived())
+            .max(Comparator.comparingInt(Habit::getBestStreak));
+            
+        bestStreakHabit.ifPresent(habit -> {
+            stats.put("bestStreak", habit.getBestStreak());
+            stats.put("bestStreakHabit", habit.getName());
+        });
+        
+        // Habits by frequency
+        Map<Recurrence, Long> habitsByFrequency = habits.stream()
+            .filter(h -> !h.isArchived())
+            .collect(Collectors.groupingBy(Habit::getRecurrence, Collectors.counting()));
+        stats.put("habitsByFrequency", habitsByFrequency);
+        
+        // Habits by priority
+        Map<Priority, Long> habitsByPriority = habits.stream()
+            .filter(h -> !h.isArchived())
+            .collect(Collectors.groupingBy(Habit::getPriority, Collectors.counting()));
+        stats.put("habitsByPriority", habitsByPriority);
+        
+        // Recent activity
+        List<Map<String, Object>> recentActivity = recentLogs.stream()
+            .limit(10)
+            .map(log -> {
+                Map<String, Object> activity = new HashMap<>();
+                activity.put("habitName", log.getHabit().getName());
+                activity.put("scheduledTime", log.getScheduledDateTime());
+                activity.put("status", log.isCompleted() ? "Completed" : 
+                                      log.getMissed() ? "Missed" : "Skipped");
+                return activity;
+            })
+            .collect(Collectors.toList());
+        stats.put("recentActivity", recentActivity);
+        
+        return stats;
     }
 
     public Optional<Habit> getHabitById(Long id) {
@@ -485,9 +570,48 @@ public class HabitService {
      * Checks if a time is within sleep hours
      */
     private boolean isWithinSleepHours(LocalTime time) {
-        return SleepWindow.isSleepTime(time, sleepWindow.getSleepStart(), sleepWindow.getSleepEnd());
+        return SleepWindow.isAsleep(time, sleepWindow.getSleepStart(), sleepWindow.getSleepEnd());
     }
 
+    /**
+     * Get a habit by ID (alias for getHabitById for backward compatibility)
+     */
+    public Optional<Habit> getHabit(Long id) {
+        return getHabitById(id);
+    }
+    
+    /**
+     * Get today's active habits (alias for getTodaysHabits for backward compatibility)
+     */
+    public List<Habit> getTodayHabits() {
+        return getTodaysHabits();
+    }
+    
+    /**
+     * Check if a habit was completed today
+     */
+    public boolean isCompletedToday(Habit habit) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        
+        return !logRepo.findByHabitAndCompletedTrueAndScheduledDateTimeBetween(
+            habit, startOfDay, endOfDay).isEmpty();
+    }
+    
+    /**
+     * Get upcoming logs for a habit
+     */
+    public List<HabitLog> getUpcomingLogs(Habit habit) {
+        LocalDateTime now = LocalDateTime.now();
+        // Get logs for the next 7 days
+        LocalDateTime endDate = now.plusDays(7);
+        return logRepo.findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
+            habit, now, endDate);
+    }
+    
+    /**
+     * Get today's active habits based on their recurrence patterns
+     */
     public List<Habit> getTodaysHabits() {
         LocalDate today = LocalDate.now();
         List<Habit> habits = habitRepo.findByArchivedFalse();
@@ -579,5 +703,25 @@ public class HabitService {
 
         habit.setLastCompleted(today);
         habitRepo.save(habit);
+    }
+    
+    /**
+     * Get a page of habit logs for a specific habit
+     * @param habit The habit to get logs for
+     * @param page The page number (0-based)
+     * @param size The number of items per page
+     * @return A page of habit logs
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<HabitLog> getLogsPage(Habit habit, int page, int size) {
+        if (habit == null) {
+            throw new IllegalArgumentException("Habit cannot be null");
+        }
+        
+        org.springframework.data.domain.Pageable pageable = 
+            org.springframework.data.domain.PageRequest.of(page, size, 
+                org.springframework.data.domain.Sort.by("scheduledDateTime").descending());
+                
+        return logRepo.findByHabit(habit, pageable);
     }
 }

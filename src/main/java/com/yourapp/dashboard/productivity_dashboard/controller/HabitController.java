@@ -3,8 +3,8 @@ package com.yourapp.dashboard.productivity_dashboard.controller;
 import com.yourapp.dashboard.productivity_dashboard.model.Habit;
 import com.yourapp.dashboard.productivity_dashboard.model.HabitLog;
 import com.yourapp.dashboard.productivity_dashboard.service.HabitService;
+import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
-import com.yourapp.dashboard.productivity_dashboard.service.Recurrence;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -33,7 +33,7 @@ public class HabitController {
         List<Habit> habits = habitService.getAllHabits();
         
         // Get today's habits
-        List<HabitLog> todaysHabits = habitService.getTodaysHabits();
+        List<Habit> todaysHabits = habitService.getTodaysHabits();
         
         // Get habit statistics
         Map<String, Object> stats = habitService.getHabitStats();
@@ -89,13 +89,14 @@ public class HabitController {
         }
     }
     
-    @PostMapping("/{id}/complete")
+    @PostMapping("/{habitId}/complete/{logId}")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> completeHabit(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> completeHabit(
+            @PathVariable Long habitId,
+            @PathVariable Long logId) {
         try {
-            habitService.completeHabit(id);
-            Habit habit = habitService.getHabitById(id)
-                .orElseThrow(() -> new RuntimeException("Habit not found"));
+            HabitLog log = habitService.completeHabit(habitId, logId);
+            Habit habit = log.getHabit();
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

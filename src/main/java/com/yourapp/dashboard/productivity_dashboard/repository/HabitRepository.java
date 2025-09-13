@@ -2,7 +2,7 @@ package com.yourapp.dashboard.productivity_dashboard.repository;
 
 import com.yourapp.dashboard.productivity_dashboard.model.Habit;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
-import com.yourapp.dashboard.productivity_dashboard.service.Recurrence;
+import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

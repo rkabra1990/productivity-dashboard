@@ -3,9 +3,11 @@ package com.yourapp.dashboard.productivity_dashboard.repository;
 import com.yourapp.dashboard.productivity_dashboard.model.Habit;
 import com.yourapp.dashboard.productivity_dashboard.model.HabitLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -22,11 +24,24 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long> {
     // Find logs by habit
     List<HabitLog> findByHabit(Habit habit);
     
+    // Find logs by habit with pagination
+    org.springframework.data.domain.Page<HabitLog> findByHabit(Habit habit, org.springframework.data.domain.Pageable pageable);
+    
+    // Count completed logs within a date range
+    long countByCompletedAndScheduledDateTimeBetween(boolean completed, LocalDateTime start, LocalDateTime end);
+    
     // Find logs by habit and completion status
     List<HabitLog> findByHabitAndCompleted(Habit habit, Boolean completed);
     
     // Find logs by completion status
     List<HabitLog> findByCompleted(Boolean completed);
+    
+    // Find logs by habit, completion status true, and within a date range
+    List<HabitLog> findByHabitAndCompletedTrueAndScheduledDateTimeBetween(
+        Habit habit, LocalDateTime start, LocalDateTime end);
+    
+    // Find most recent logs, ordered by scheduled date/time (newest first)
+    List<HabitLog> findTop50ByOrderByScheduledDateTimeDesc();
     
     // Find logs by habit, not completed, not missed, and scheduled before a specific time
     List<HabitLog> findByHabitAndCompletedFalseAndMissedFalseAndScheduledDateTimeBefore(
@@ -47,11 +62,11 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long> {
     
     // Find logs by habit and completion status within a date range
     List<HabitLog> findByHabitAndCompletedAndScheduledDateTimeBetween(
-        Habit habit, Boolean completed, LocalDateTime start, LocalDateTime end);
+        Habit habit, boolean completed, LocalDateTime start, LocalDateTime end);
     
     // Count completed logs for a habit within a date range
     long countByHabitAndCompletedAndScheduledDateTimeBetween(
-        Habit habit, Boolean completed, LocalDateTime start, LocalDateTime end);
+        Habit habit, boolean completed, LocalDateTime start, LocalDateTime end);
         
     // Find logs by habit and scheduled date time
     Optional<HabitLog> findByHabitAndScheduledDateTime(Habit habit, LocalDateTime scheduledDateTime);
@@ -66,32 +81,6 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long> {
         @Param("end") LocalDateTime end
     );
     
-    // Find unprocessed missed logs (for the scheduler)
-    @Query("SELECT hl FROM HabitLog hl WHERE hl.missed = true AND hl.missedDateTime IS NULL")
-    List<HabitLog> findUnprocessedMissedLogs();
-    
-    // Check if a log exists for the given habit and scheduled time
-    boolean existsByHabitAndScheduledDateTime(Habit habit, LocalDateTime scheduledDateTime);
-    
-    // Find logs by habit and completion status within a date range
-    List<HabitLog> findByHabitAndCompletedAndScheduledDateTimeBetween(
-        Habit habit, boolean completed, LocalDateTime start, LocalDateTime end);
-        
-    // Find logs by habit and date range, ordered by scheduled time
-    List<HabitLog> findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
-        Habit habit, LocalDateTime start, LocalDateTime end);
-        
-    // Find logs by habit and missed status
-    List<HabitLog> findByHabitAndMissed(Habit habit, boolean missed);
-    
-    // Count logs by habit, completion status, and date range
-    long countByHabitAndCompletedAndScheduledDateTimeBetween(
-        Habit habit, boolean completed, LocalDateTime start, LocalDateTime end);
-        
-    // Find logs by habit, completion status, and date range
-    List<HabitLog> findByHabitAndCompletedAndScheduledDateTimeBetween(
-        Habit habit, boolean completed, LocalDateTime start, LocalDateTime end);
-        
     // Find logs by habit and date range, ordered by scheduled time
     List<HabitLog> findByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeAsc(
         Habit habit, LocalDateTime start, LocalDateTime end);
@@ -201,6 +190,4 @@ public interface HabitLogRepository extends JpaRepository<HabitLog, Long> {
     void deleteByHabitId(@Param("habitId") Long habitId);
 
     List<HabitLog> findByCompletedFalseAndNotifSentFalseAndScheduledDateTimeBetween(LocalDateTime start, LocalDateTime end);
-
-    List<HabitLog> findByHabitAndScheduledDateTimeAfterOrderByScheduledDateTimeAsc(Habit habit, LocalDateTime now);
 }

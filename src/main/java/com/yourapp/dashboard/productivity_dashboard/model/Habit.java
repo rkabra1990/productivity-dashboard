@@ -40,6 +40,10 @@ public class Habit {
     private Integer yearlyDay;                    // 1-31 for YEARLY recurrence
 
     private Boolean archived = false;
+    
+    public boolean isArchived() {
+        return archived != null && archived;
+    }
     private int currentStreak = 0;
     private int bestStreak = 0;
     private int missedCount = 0;

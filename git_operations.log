@@ -97,3 +97,32 @@ To https://github.com/rkabra1990/productivity-dashboard.git
    2592faf..e9475af  main -> main
 [12-09-2025  8:28:58.58] Git operations completed. 
 [13-09-2025 11:00:29.03] Starting Git commit and push... 
+warning: in the working copy of 'git_operations.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'logs/productivity-dashboard.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/controller/TaskController.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/model/Habit.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/model/HabitLog.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/repository/HabitLogRepository.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/repository/TaskRepository.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/service/HabitService.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/service/TaskService.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/resources/templates/habits.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/resources/templates/tasks.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'update.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'logs/productivity-dashboard-2025-09-12.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/model/Recurrence.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/service/HabitSchedulerService.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/yourapp/dashboard/productivity_dashboard/service/SleepWindow.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/resources/db/migration/V20240913_AddHabitSchedulingFields.java', LF will be replaced by CRLF the next time Git touches it
+[main a502e59] Auto-commit: 2025-13-09 11:00:30
+ 18 files changed, 9556 insertions(+), 6238 deletions(-)
+ create mode 100644 logs/productivity-dashboard-2025-09-12.log
+ create mode 100644 src/main/java/com/yourapp/dashboard/productivity_dashboard/model/Recurrence.java
+ create mode 100644 src/main/java/com/yourapp/dashboard/productivity_dashboard/service/HabitSchedulerService.java
+ delete mode 100644 src/main/java/com/yourapp/dashboard/productivity_dashboard/service/Recurrence.java
+ create mode 100644 src/main/java/com/yourapp/dashboard/productivity_dashboard/service/SleepWindow.java
+ create mode 100644 src/main/resources/db/migration/V20240913_AddHabitSchedulingFields.java
+To https://github.com/rkabra1990/productivity-dashboard.git
+   e9475af..a502e59  main -> main
+[13-09-2025 11:00:48.35] Git operations completed. 
+[13-09-2025 12:00:01.55] Starting Git commit and push... 
