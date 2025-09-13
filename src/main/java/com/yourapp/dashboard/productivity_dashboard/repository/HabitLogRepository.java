@@ -12,20 +12,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface HabitLogRepository extends JpaRepository<HabitLog, Long> {
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+public interface HabitLogRepository extends JpaRepository<HabitLog, Long>, HabitLogRepositoryCustom {
     // Basic CRUD operations
     @Override
     Optional<HabitLog> findById(Long id);
     
-    // Find logs by habit and date range
+    // Find logs by habit and date range with custom implementation for better connection handling
+    @Query("SELECT hl FROM HabitLog hl WHERE hl.habit = :habit AND hl.scheduledDateTime BETWEEN :start AND :start")
+    @Deprecated
     List<HabitLog> findByHabitAndScheduledDateTimeBetween(
-        Habit habit, LocalDateTime start, LocalDateTime end);
+        @Param("habit") Habit habit, 
+        @Param("start") LocalDateTime start, 
+        @Param("end") LocalDateTime end);
     
     // Find logs by habit
     List<HabitLog> findByHabit(Habit habit);
     
     // Find logs by habit with pagination
-    org.springframework.data.domain.Page<HabitLog> findByHabit(Habit habit, org.springframework.data.domain.Pageable pageable);
+    Page<HabitLog> findByHabit(Habit habit, Pageable pageable);
+    
+    // Find the most recent log for a habit within a date range
+    Optional<HabitLog> findTopByHabitAndScheduledDateTimeBetweenOrderByScheduledDateTimeDesc(
+        Habit habit, LocalDateTime start, LocalDateTime end);
     
     // Count completed logs within a date range
     long countByCompletedAndScheduledDateTimeBetween(boolean completed, LocalDateTime start, LocalDateTime end);

@@ -27,6 +27,24 @@ public class DatabaseConfig {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
+    @Value("${spring.datasource.hikari.minimum-idle:5}")
+    private int minIdle;
+
+    @Value("${spring.datasource.hikari.maximum-pool-size:20}")
+    private int maxPoolSize;
+    
+    @Value("${spring.datasource.hikari.leak-detection-threshold:60000}")
+    private long leakDetectionThreshold;
+    
+    @Value("${spring.datasource.hikari.connection-timeout:30000}")
+    private long connectionTimeout;
+    
+    @Value("${spring.datasource.hikari.idle-timeout:600000}")
+    private long idleTimeout;
+    
+    @Value("${spring.datasource.hikari.max-lifetime:1800000}")
+    private long maxLifetime;
+
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
@@ -35,14 +53,15 @@ public class DatabaseConfig {
         config.setPassword(dbPassword);
         
         // Connection pool settings
-        config.setMaximumPoolSize(10);
-        config.setMinimumIdle(2);
-        config.setIdleTimeout(30000);
-        config.setConnectionTimeout(30000);
-        config.setMaxLifetime(1800000);
-        config.setLeakDetectionThreshold(60000);
-        
-        // Performance settings
+        config.setMaximumPoolSize(maxPoolSize);
+        config.setMinimumIdle(minIdle);
+        config.setLeakDetectionThreshold(leakDetectionThreshold);
+        config.setConnectionTimeout(connectionTimeout);
+        config.setIdleTimeout(idleTimeout);
+        config.setMaxLifetime(maxLifetime);
+        config.setAutoCommit(true);
+        config.setPoolName("ProductivityAppPool");
+        config.setConnectionTestQuery("SELECT 1");
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");

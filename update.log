@@ -116,3 +116,19 @@ time="2025-09-13T14:15:03+05:30" level=warning msg="D:\\Intellij\\productivity-d
  Container productivity-app  Starting
  Container productivity-app  Started
 [13-09-2025 14:15:03.97] Update process completed. 
+[13-09-2025 15:15:01.56] Starting update process... 
+Stopping existing containers... 
+time="2025-09-13T15:15:01+05:30" level=warning msg="D:\\Intellij\\productivity-dashboard\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Fetching latest changes... 
+Checking for updates... 
+No updates available. 
+time="2025-09-13T15:15:02+05:30" level=warning msg="D:\\Intellij\\productivity-dashboard\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Network productivity-dashboard_default  Creating
+ Network productivity-dashboard_default  Created
+ Container productivity-app  Creating
+ Container productivity-app  Created
+ Container productivity-app  Starting
+ Container productivity-app  Started
+[13-09-2025 15:15:03.55] Update process completed. 
+[13-09-2025 17:15:41.87] Starting update process... 
+Stopping existing containers... 

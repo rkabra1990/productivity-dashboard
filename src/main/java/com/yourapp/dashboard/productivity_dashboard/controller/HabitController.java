@@ -2,6 +2,7 @@ package com.yourapp.dashboard.productivity_dashboard.controller;
 
 import com.yourapp.dashboard.productivity_dashboard.model.Habit;
 import com.yourapp.dashboard.productivity_dashboard.model.HabitLog;
+import com.yourapp.dashboard.productivity_dashboard.service.HabitProcessingService;
 import com.yourapp.dashboard.productivity_dashboard.service.HabitService;
 import com.yourapp.dashboard.productivity_dashboard.model.Recurrence;
 import com.yourapp.dashboard.productivity_dashboard.service.Priority;
@@ -22,28 +23,35 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/habits")
 public class HabitController {
 
-    @Autowired 
     private final HabitService habitService;
+    private final HabitProcessingService habitProcessingService;
     private final HabitLogRepository logRepo;
 
     @Autowired
-    public HabitController(HabitService habitService, HabitLogRepository logRepo) {
+    public HabitController(HabitService habitService, 
+                         HabitProcessingService habitProcessingService,
+                         HabitLogRepository logRepo) {
         this.habitService = habitService;
+        this.habitProcessingService = habitProcessingService;
         this.logRepo = logRepo;
     }
 
     @GetMapping
     public String viewHabits(Model model) {
+        // Process habits for today in a separate transaction
+        habitProcessingService.processHabitsForToday();
+        
         // Get all active (non-archived) habits
         List<Habit> habits = habitService.getAllHabits();
         
-        // Get today's habits with progress information
-        List<Habit> todaysHabits = habitService.getTodaysHabits();
+        // Get today's habits with progress information from the processing service
+        List<Habit> todaysHabits = habitProcessingService.getTodaysHabits();
         
         // Calculate progress for each habit
         Map<Long, Double> habitProgress = new HashMap<>();

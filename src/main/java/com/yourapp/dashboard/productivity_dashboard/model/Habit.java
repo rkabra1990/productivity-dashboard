@@ -242,30 +242,6 @@ public class Habit {
         this.missedCount = missedCount;
     }
     
-    public double getProgress() {
-        return progress;
-    }
-    
-    public void setProgress(double progress) {
-        this.progress = progress;
-    }
-    
-    public int getTotalOccurrences() {
-        return totalOccurrences;
-    }
-    
-    public void setTotalOccurrences(int totalOccurrences) {
-        this.totalOccurrences = totalOccurrences;
-    }
-    
-    public int getCompletedOccurrences() {
-        return completedOccurrences;
-    }
-    
-    public void setCompletedOccurrences(int completedOccurrences) {
-        this.completedOccurrences = completedOccurrences;
-    }
-    
     public String getTimeZone() {
         return timeZone != null ? timeZone : ZoneId.systemDefault().toString();
     }
